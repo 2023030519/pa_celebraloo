@@ -130,19 +130,3 @@ export async function getEventDetail(eventId: string): Promise<EventDetail | nul
     })),
   };
 }
-
-export async function getOverview() {
-  const service = createServiceRoleClient();
-  const [events, paid, staff, emails] = await Promise.all([
-    service.from("events").select("id", { count: "exact", head: true }),
-    service.from("purchases").select("id", { count: "exact", head: true }).eq("payment_status", "paid"),
-    service.from("celebraloo_staff").select("id", { count: "exact", head: true }).eq("is_platform_admin", true),
-    getEmailMap(),
-  ]);
-  return {
-    users: emails.size,
-    events: events.count ?? 0,
-    paidPurchases: paid.count ?? 0,
-    admins: staff.count ?? 0,
-  };
-}

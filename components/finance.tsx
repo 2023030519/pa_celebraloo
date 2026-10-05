@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, Info, OctagonAlert } from "lucide-react";
 import { Badge, Table, cn, formatDate } from "@/components/ui";
 import { EVENT_STATUS, PAYMENT_STATUS, formatMxn } from "@/lib/format";
-import type { AttentionItem, SaleRow } from "@/lib/data/admin";
+import type { SaleRow } from "@/lib/data/admin";
 
 /** Una cifra de dinero. emphasis = la que importa (dinero disponible). */
 export function MoneyTile({
@@ -106,57 +105,6 @@ export function SalesTable({ rows, compact = false, empty }: { rows: SaleRow[]; 
         </tr>
       ))}
     </Table>
-  );
-}
-
-const SEVERITY = {
-  alta: { icon: OctagonAlert, className: "text-danger-700", label: "Urgente" },
-  media: { icon: AlertTriangle, className: "text-gold-800", label: "Revisar" },
-  baja: { icon: Info, className: "text-info-700", label: "Aviso" },
-} as const;
-
-function attentionHref(item: AttentionItem): string | null {
-  if (!item.target_id) return null;
-  if (item.target_type === "purchase") return `/ventas/${item.target_id}`;
-  if (item.target_type === "event") return `/eventos/${item.target_id}`;
-  if (item.target_type === "customer") return `/clientes/${item.target_id}`;
-  return null;
-}
-
-export function AttentionList({ items, limit }: { items: AttentionItem[]; limit?: number }) {
-  const order = { alta: 0, media: 1, baja: 2 };
-  const sorted = [...items].sort((a, b) => order[a.severity] - order[b.severity] || b.occurred_at.localeCompare(a.occurred_at));
-  const shown = limit ? sorted.slice(0, limit) : sorted;
-  if (shown.length === 0) return <p className="text-ink-600">Nada pendiente. Todo en orden.</p>;
-  return (
-    <ul className="flex flex-col divide-y divide-ink-150">
-      {shown.map((item, index) => {
-        const meta = SEVERITY[item.severity] ?? SEVERITY.baja;
-        const Icon = meta.icon;
-        const href = attentionHref(item);
-        const content = (
-          <span className="flex items-start gap-2.5 py-2.5">
-            <Icon size={16} className={cn("mt-0.5 shrink-0", meta.className)} aria-label={meta.label} />
-            <span className="min-w-0">
-              <span className="block font-medium text-ink-950">{item.title}</span>
-              {item.detail && <span className="block truncate text-xs text-ink-600">{item.detail}</span>}
-              <span className="block text-xs text-ink-600">{formatDate(item.occurred_at, true)}</span>
-            </span>
-          </span>
-        );
-        return (
-          <li key={`${item.kind}-${item.target_id}-${index}`}>
-            {href ? (
-              <Link href={href} className="block rounded-md hover:bg-paper">
-                {content}
-              </Link>
-            ) : (
-              content
-            )}
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 

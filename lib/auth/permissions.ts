@@ -67,6 +67,7 @@ export function isPermission(value: unknown): value is Permission {
  * Varias opciones = basta con una.
  */
 export const AREA_PERMISSIONS: { prefix: string; anyOf: Permission[] }[] = [
+  { prefix: "/alertas", anyOf: ["alertas.read"] },
   { prefix: "/ventas", anyOf: ["ventas.read"] },
   { prefix: "/finanzas", anyOf: ["finanzas.read"] },
   { prefix: "/gastos", anyOf: ["gastos.read"] },

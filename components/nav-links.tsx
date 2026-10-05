@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
+  Bell,
   CalendarHeart,
   FileSpreadsheet,
   History,
@@ -25,6 +26,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 // (AREA_PERMISSIONS, el mismo mapa que usa el proxy).
 const NAV: NavItem[] = [
   { href: "/", label: "Inicio", icon: House },
+  { href: "/alertas", label: "Alertas", icon: Bell },
   { href: "/ventas", label: "Ventas", icon: BadgeDollarSign },
   { href: "/finanzas", label: "Finanzas", icon: Landmark },
   { href: "/gastos", label: "Gastos", icon: Receipt },

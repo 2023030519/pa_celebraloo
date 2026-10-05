@@ -56,12 +56,6 @@ export async function getSetAsideBreakdown(from: string | null, to: string | nul
   return rpc<SetAsideRow[]>("admin_set_aside_breakdown", { p_from: from, p_to: to });
 }
 
-export type SalesDay = { day: string; ventas_brutas_cents: number; reembolsos_cents: number; numero_ventas: number };
-
-export async function getSalesByDay(from: string, to: string): Promise<SalesDay[]> {
-  return rpc<SalesDay[]>("admin_sales_by_day", { p_from: from, p_to: to });
-}
-
 export type ProductSales = {
   item_type: "plan" | "addon";
   item_key: string;
@@ -150,7 +144,10 @@ export type SaleDetail = {
   has_failed_attempt: boolean;
   /** false: el rol no tiene ventas.financiero y la BD omitió el desglose. */
   financials_visible?: boolean;
+  /** Perfil del cliente; si aún no reclama la compra, el usuario con ese correo. */
+  customer_id?: string | null;
   customer_name: string | null;
+  refund_summary?: { refunded_cents: number; last_refund_at: string | null; kind: "total" | "parcial" } | null;
   event_name: string | null;
   refunds: { id: string; amount_cents: number; tax_cents: number; status: string; reason: string | null; stripe_created_at: string }[];
   disputes: { id: string; amount_cents: number; fee_cents: number; status: string; reason: string | null; stripe_created_at: string; closed_at: string | null }[];
@@ -177,20 +174,6 @@ export type OperationalKpis = {
 export async function getOperationalKpis(from: string, to: string): Promise<OperationalKpis> {
   const rows = await rpc<OperationalKpis[]>("admin_operational_kpis", { p_from: from, p_to: to });
   return rows[0];
-}
-
-export type AttentionItem = {
-  kind: string;
-  severity: "alta" | "media" | "baja";
-  title: string;
-  detail: string | null;
-  target_type: "purchase" | "event" | "customer" | null;
-  target_id: string | null;
-  occurred_at: string;
-};
-
-export async function getAttentionItems(): Promise<AttentionItem[]> {
-  return rpc<AttentionItem[]>("admin_attention_items", {});
 }
 
 export type EventListRow = {
@@ -367,4 +350,79 @@ export type ActivityItem = {
 /** before: para paginar hacia atrás (occurred_at del último renglón visto). */
 export async function getActivity(limit: number, before: string | null): Promise<ActivityItem[]> {
   return rpc<ActivityItem[]>("admin_activity", { p_limit: limit, p_before: before });
+}
+
+// ---------------------------------------------------------------------------
+// Inicio, alertas y definiciones (migraciones 20261005120000 … 140000)
+// ---------------------------------------------------------------------------
+
+export type MonthMetric =
+  | "ingresos"
+  | "ventas"
+  | "clientes_de_pago"
+  | "dinero_disponible"
+  | "ticket_promedio"
+  | "conversion_bps"
+  | "clientes_nuevos"
+  | "eventos_creados";
+
+export type MonthToDateRow = {
+  metric: MonthMetric;
+  actual: number | null;
+  anterior: number | null;
+  /** Variación en puntos base; null sin dato anterior (o anterior = 0). */
+  variacion_bps: number | null;
+  actual_desde: string;
+  actual_hasta: string;
+  anterior_desde: string;
+  anterior_hasta: string;
+};
+
+/** Mes en curso contra los mismos días del mes anterior. Sin finanzas.read no llegan las filas de dinero. */
+export async function getMonthToDate(): Promise<Map<MonthMetric, MonthToDateRow>> {
+  const rows = await rpc<MonthToDateRow[]>("admin_month_to_date", {});
+  return new Map(rows.map((row) => [row.metric, row]));
+}
+
+export type SeriesMetric = "ingresos" | "ventas" | "clientes_nuevos";
+export type SeriesBucket = "day" | "week" | "month";
+export type SeriesPoint = { bucket_start: string; bucket_end: string; value: number };
+
+export async function getSeries(from: string, to: string, bucket: SeriesBucket, metric: SeriesMetric): Promise<SeriesPoint[]> {
+  return rpc<SeriesPoint[]>("admin_series", { p_from: from, p_to: to, p_bucket: bucket, p_metric: metric });
+}
+
+export type ProductMixRow = {
+  item_type: "plan" | "addon";
+  item_key: string;
+  item_name: string;
+  numero_ventas: number;
+  /** Porcentaje dentro de su tipo, en puntos base. */
+  porcentaje_bps: number;
+};
+
+export async function getProductMix(from: string, to: string): Promise<ProductMixRow[]> {
+  return rpc<ProductMixRow[]>("admin_product_mix", { p_from: from, p_to: to });
+}
+
+export type AlertSeverity = "rojo" | "amarillo" | "azul";
+
+export type AlertRow = {
+  kind: string;
+  severity: AlertSeverity;
+  title: string;
+  detail: string | null;
+  occurred_at: string | null;
+  target_type: "purchase" | "event" | "customer" | null;
+  target_id: string | null;
+};
+
+export async function getAlerts(kind: string | null, limit = 200): Promise<AlertRow[]> {
+  return rpc<AlertRow[]>("admin_alerts", { p_kind: kind, p_limit: limit });
+}
+
+export type AlertCount = { kind: string; severity: AlertSeverity; total: number };
+
+export async function getAlertCounts(): Promise<AlertCount[]> {
+  return rpc<AlertCount[]>("admin_alert_counts", {});
 }

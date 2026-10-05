@@ -114,3 +114,32 @@ export const EXPENSE_CATEGORIES: Record<string, string> = {
   otros: "Otros",
   retiro: "Retiro (sale de caja, no es gasto operativo)",
 };
+
+const pctFormat = (digits: number, sign: boolean) =>
+  new Intl.NumberFormat("es-MX", {
+    style: "percent",
+    maximumFractionDigits: digits,
+    ...(sign ? { signDisplay: "exceptZero" as const } : {}),
+  });
+
+/** Puntos base → "66.7 %". */
+export function formatBps(bps: number | null | undefined): string {
+  if (bps === null || bps === undefined) return "—";
+  return pctFormat(1, false).format(bps / 10000);
+}
+
+/** Variación en puntos base → "+18 %", "-4.5 %" (un decimal solo si es menor a 10 %). */
+export function formatDeltaBps(bps: number): string {
+  return pctFormat(Math.abs(bps) < 1000 ? 1 : 0, true).format(bps / 10000);
+}
+
+/** [desde, hasta) en días → "1–5 oct" o "28 sep–5 oct". */
+export function dayRangeLabel(from: string, toExclusive: string): string {
+  const last = addDays(toExclusive, -1);
+  const fmt = (iso: string, withMonth: boolean) =>
+    new Intl.DateTimeFormat("es-MX", { day: "numeric", ...(withMonth ? { month: "short" } : {}), timeZone: "UTC" }).format(
+      new Date(`${iso}T12:00:00Z`)
+    );
+  if (from === last) return fmt(from, true);
+  return from.slice(0, 7) === last.slice(0, 7) ? `${fmt(from, false)}–${fmt(last, true)}` : `${fmt(from, true)}–${fmt(last, true)}`;
+}
