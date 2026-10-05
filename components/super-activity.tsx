@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getActivity, type ActivityItem } from "@/lib/data/admin";
 import { Badge, PageTitle, Table, formatDate } from "@/components/ui";
 import { DataError } from "@/components/finance";
+import { ADMIN_ACTION_LABELS } from "@/lib/format";
 import { Field, FilterBar, fieldClass } from "@/components/filters";
 
 const PAGE = 100;
@@ -20,26 +21,6 @@ const KINDS: Record<string, { label: string; tone: "neutral" | "gold" | "ok" | "
   admin: { label: "Admin", tone: "gold" },
 };
 
-// Acciones de admin_audit_log con nombre legible.
-const ADMIN_ACTIONS: Record<string, string> = {
-  "role.change": "Cambio de rol",
-  "catalog.update": "Catálogo editado",
-  "free_plan.reset": "Plan gratis devuelto",
-  "event.unlock": "Edición desbloqueada",
-  "event.relock": "Edición bloqueada de nuevo",
-  "event.delete": "Evento borrado",
-  "account.disable": "Cuenta deshabilitada",
-  "account.enable": "Cuenta habilitada",
-  "account.delete": "Cuenta borrada",
-  "admin_expenses.insert": "Gasto registrado",
-  "admin_expenses.update": "Gasto editado",
-  "admin_expenses.delete": "Gasto borrado",
-  "admin_settings.update": "Configuración cambiada",
-  "admin_set_aside_rules.insert": "Apartado creado",
-  "admin_set_aside_rules.update": "Apartado editado",
-  "admin_set_aside_rules.delete": "Apartado borrado",
-};
-
 function href(item: ActivityItem): string | null {
   if (!item.target_id) return null;
   switch (item.target_type) {
@@ -52,6 +33,9 @@ function href(item: ActivityItem): string | null {
       return `/ventas/${item.target_id}`;
     case "admin_expenses":
       return item.title === "admin_expenses.delete" ? null : `/gastos/${item.target_id}`;
+    case "admin_recurring_expenses":
+    case "expense":
+      return "/gastos/suscripciones";
     case "admin_settings":
     case "admin_set_aside_rules":
       return "/configuracion";
@@ -106,7 +90,7 @@ export async function SuperActivity({ params }: { params: { antes?: string; tipo
         {shown.map((item, index) => {
           const meta = KINDS[item.kind] ?? { label: item.kind, tone: "neutral" as const };
           const link = href(item);
-          const title = item.kind === "admin" ? ADMIN_ACTIONS[item.title] ?? item.title : item.title;
+          const title = item.kind === "admin" ? ADMIN_ACTION_LABELS[item.title] ?? item.title : item.title;
           return (
             <tr key={`${item.occurred_at}-${item.kind}-${item.target_id}-${index}`} className="align-top hover:bg-paper">
               <td className="px-3 py-2.5 whitespace-nowrap text-ink-600">{formatDate(item.occurred_at, true)}</td>

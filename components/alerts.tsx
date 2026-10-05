@@ -28,6 +28,7 @@ export const ALERT_KINDS: Record<string, string> = {
   registrado_sin_evento: "Registrados sin evento",
   evento_sin_publicar_usuario: "Con evento sin publicar",
   venta_sin_comision: "Ventas sin comisión registrada",
+  renovacion_anual: "Renovaciones anuales próximas",
 };
 
 export function alertHref(item: Pick<AlertRow, "target_type" | "target_id">): string | null {
@@ -35,6 +36,7 @@ export function alertHref(item: Pick<AlertRow, "target_type" | "target_id">): st
   if (item.target_type === "purchase") return `/ventas/${item.target_id}`;
   if (item.target_type === "event") return `/eventos/${item.target_id}`;
   if (item.target_type === "customer") return `/clientes/${item.target_id}`;
+  if (item.target_type === "expense") return "/gastos/suscripciones";
   return null;
 }
 

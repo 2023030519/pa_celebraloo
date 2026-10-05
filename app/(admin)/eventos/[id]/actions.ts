@@ -3,18 +3,15 @@
 import { refresh } from "next/cache";
 import { can, NO_PERMISSION, requireAdmin } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getCatalog, type Capability, type CapabilityValue } from "@/lib/data/catalog";
-import { mergeHighest, sameValue, valueRank } from "@/lib/entitlements/values";
 
 export type ActionResult = { ok: boolean; message: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Todas las escrituras van por RPC con la sesión del admin: la BD comprueba
- * is_platform_admin y guarda quién y por qué en event_entitlement_grants.
- * El service role solo se usa para leer el estado actual.
+ * Todas las escrituras van por RPC con la sesión de quien las hace: la BD
+ * comprueba el permiso y guarda quién y por qué en event_entitlement_grants.
  */
 function friendlyError(error: { code?: string; message: string }): string {
   if (error.code === "42501") return NO_PERMISSION;
@@ -28,21 +25,6 @@ function friendlyError(error: { code?: string; message: string }): string {
 function validReason(reason: string): string | null {
   const trimmed = reason.trim();
   return trimmed.length >= 3 ? trimmed.slice(0, 500) : null;
-}
-
-async function readCurrent(eventId: string): Promise<Map<string, CapabilityValue>> {
-  const service = createServiceRoleClient();
-  const { data, error } = await service
-    .from("event_entitlements")
-    .select("capability_key, value_boolean, value_integer, value_text")
-    .eq("event_id", eventId);
-  if (error) throw new Error(error.message);
-  return new Map(
-    (data ?? []).map((row) => [
-      row.capability_key,
-      { value_boolean: row.value_boolean, value_integer: row.value_integer, value_text: row.value_text },
-    ])
-  );
 }
 
 async function setOne(eventId: string, key: string, value: CapabilityValue, reason: string) {
@@ -130,27 +112,31 @@ export async function clearCapability(eventId: string, capabilityKey: string, re
   return { ok: true, message: `${capability.name}: quitado.` };
 }
 
-type BulkPlan = { set: Map<string, CapabilityValue>; clear: string[] };
-
-async function runBulk(eventId: string, plan: BulkPlan, reason: string, label: string): Promise<ActionResult> {
-  let changed = 0;
-  for (const [key, value] of plan.set) {
-    const { error } = await setOne(eventId, key, value, reason);
-    if (error) {
-      refresh();
-      return { ok: false, message: `${label}: se detuvo en "${key}" (${changed} cambios aplicados). ${friendlyError(error)}` };
-    }
-    changed++;
-  }
-  for (const key of plan.clear) {
-    const { error } = await clearOne(eventId, key, reason);
-    if (error) {
-      refresh();
-      return { ok: false, message: `${label}: se detuvo al quitar "${key}" (${changed} cambios aplicados). ${friendlyError(error)}` };
-    }
-    changed++;
-  }
+/**
+ * Plan, complemento y acceso total van en UNA transacción
+ * (admin_assign_to_event): mismos valores que antes, sin quedar a medias, y
+ * con registro en admin_event_assignments y admin_audit_log.
+ */
+async function assign(
+  eventId: string,
+  kind: "plan" | "complemento" | "acceso_total",
+  itemKey: string | null,
+  reason: string,
+  label: string,
+  removeOthers = false
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_assign_to_event", {
+    p_event_id: eventId,
+    p_kind: kind,
+    p_item_key: itemKey,
+    p_courtesy: false,
+    p_reason: reason,
+    p_remove_others: removeOthers,
+  });
+  if (error) return { ok: false, message: friendlyError(error) };
   refresh();
+  const changed = Number(data ?? 0);
   return { ok: true, message: changed === 0 ? `${label}: ya estaba así, sin cambios.` : `${label}: ${changed} cambios aplicados.` };
 }
 
@@ -166,63 +152,23 @@ export async function applyPlan(
 ): Promise<ActionResult> {
   const checked = await guard(eventId, reason, true);
   if ("error" in checked) return { ok: false, message: checked.error };
-
-  const catalog = await getCatalog();
-  const plan = catalog.plans.find((item) => item.key === planKey);
+  const plan = (await getCatalog()).plans.find((item) => item.key === planKey);
   if (!plan) return { ok: false, message: "Plan desconocido." };
-
-  const current = await readCurrent(eventId);
-  const target = mergeHighest(catalog.capabilities, plan.capabilities);
-  const set = new Map([...target].filter(([key, value]) => !current.has(key) || !sameValue(current.get(key)!, value)));
-  const clear = [...current.keys()].filter(
-    (key) => !target.has(key) && (removeOthers || (key === "choose_plan" && planKey !== "tour"))
-  );
-
-  return runBulk(eventId, { set, clear }, `${checked.reason} [plan ${plan.name}]`, `Plan ${plan.name}`);
+  return assign(eventId, "plan", plan.key, checked.reason, `Plan ${plan.name}`, removeOthers);
 }
 
 /** Suma un complemento: solo sube valores, nunca baja un límite que ya tenía. */
 export async function applyAddon(eventId: string, addonKey: string, reason: string): Promise<ActionResult> {
-  const checked = await guard(eventId, reason);
+  const checked = await guard(eventId, reason, true);
   if ("error" in checked) return { ok: false, message: checked.error };
-
-  const catalog = await getCatalog();
-  const addon = catalog.addons.find((item) => item.key === addonKey);
+  const addon = (await getCatalog()).addons.find((item) => item.key === addonKey);
   if (!addon) return { ok: false, message: "Complemento desconocido." };
-
-  return raiseTo(eventId, catalog.capabilities, addon.capabilities, `${checked.reason} [complemento ${addon.name}]`, addon.name);
+  return assign(eventId, "complemento", addon.key, checked.reason, addon.name);
 }
 
 /** Todo: el plan más alto (Atelier) + todos los complementos activos, con el mayor valor de cada uno. */
 export async function grantEverything(eventId: string, reason: string): Promise<ActionResult> {
   const checked = await guard(eventId, reason, true);
   if ("error" in checked) return { ok: false, message: checked.error };
-
-  const catalog = await getCatalog();
-  const sources = [
-    ...(catalog.plans.find((plan) => plan.key === "atelier")?.capabilities ?? []),
-    ...catalog.addons.filter((addon) => addon.isActive).flatMap((addon) => addon.capabilities),
-  ];
-  return raiseTo(eventId, catalog.capabilities, sources, `${checked.reason} [acceso total]`, "Acceso total", true);
-}
-
-async function raiseTo(
-  eventId: string,
-  capabilities: Capability[],
-  sources: (CapabilityValue & { capability_key: string })[],
-  reason: string,
-  label: string,
-  leaveTour = false
-): Promise<ActionResult> {
-  const byKey = new Map(capabilities.map((cap) => [cap.key, cap]));
-  const current = await readCurrent(eventId);
-  const target = mergeHighest(capabilities, sources);
-  const set = new Map(
-    [...target].filter(([key, value]) => {
-      const now = current.get(key);
-      return !now || valueRank(byKey.get(key)!, value) > valueRank(byKey.get(key)!, now);
-    })
-  );
-  const clear = leaveTour && current.has("choose_plan") ? ["choose_plan"] : [];
-  return runBulk(eventId, { set, clear }, reason, label);
+  return assign(eventId, "acceso_total", null, checked.reason, "Acceso total");
 }

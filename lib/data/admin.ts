@@ -245,13 +245,14 @@ export type CustomerRow = {
   email: string;
   name: string | null;
   registered_at: string;
-  last_sign_in_at: string | null;
-  current_plan_key: string | null;
+  /** Lo más reciente entre su última actividad en Celebraloo y su último inicio de sesión. */
+  last_activity_at: string | null;
   events: number;
   spent_cents: number;
   disabled: boolean;
   is_staff: boolean;
   is_paying: boolean;
+  email_confirmed: boolean;
   total_count: number;
 };
 
@@ -264,6 +265,33 @@ export async function listCustomers(args: { search: string | null; filter: strin
   });
 }
 
+/** compra | asignado (panel) | cortesia (panel) | prueba (Tour). */
+export type PlanOrigin = "compra" | "asignado" | "cortesia" | "prueba";
+
+export type EventAddon = { key: string; name: string; origin: PlanOrigin };
+
+export type CustomerEvent = {
+  id: string;
+  name: string;
+  event_date: string | null;
+  status: string;
+  published: boolean;
+  guests: number;
+  plan_key: string | null;
+  plan_origin: PlanOrigin | null;
+  addons: EventAddon[];
+};
+
+export type CustomerActivity = {
+  at: string;
+  kind: "registro" | "evento" | "pago" | "admin";
+  title: string;
+  detail: string | null;
+  actor: string | null;
+  target_type: string | null;
+  target_id: string | null;
+};
+
 export type CustomerCard = {
   id: string;
   email: string;
@@ -271,14 +299,20 @@ export type CustomerCard = {
   phone: string | null;
   registered_at: string;
   last_sign_in_at: string | null;
+  last_seen_at: string | null;
+  last_activity_at: string | null;
+  email_confirmed: boolean;
   disabled: boolean;
   is_staff: boolean;
+  has_profile: boolean;
   spent_cents: number;
-  /** Definición oficial de "cliente de pago" (migración 20261005120000). */
-  is_paying?: boolean;
+  is_paying: boolean;
   paid_purchases: number;
+  first_paid_at: string | null;
+  last_paid_at: string | null;
   events: number;
-  current_plan_key: string | null;
+  acq_channel: string;
+  acq_utm_campaign: string | null;
   purchases: {
     id: string;
     sale_at: string;
@@ -289,12 +323,62 @@ export type CustomerCard = {
     refunded_cents: number;
     display_status: string;
   }[];
-  addons: string[];
-  events_list: { id: string; name: string; event_date: string | null; plan_key: string | null; status: string }[];
+  events_list: CustomerEvent[];
+  activity: CustomerActivity[];
 };
 
 export async function getCustomerCard(id: string): Promise<CustomerCard | null> {
   return rpc<CustomerCard | null>("admin_customer_card", { p_profile_id: id });
+}
+
+export type ViewAs = {
+  session: { id: string; expires_at: string; reason: string };
+  customer: { id: string; name: string | null; email: string; registered_at: string; email_confirmed: boolean } | null;
+  events: (Omit<CustomerEvent, "guests"> & {
+    event_type: string;
+    city: string | null;
+    invitation_status: string | null;
+    guests: number;
+    rsvp_confirmed: number;
+    rsvp_pending: number;
+    rsvp_declined: number;
+    checked_in: number;
+    photos: number;
+    role: string;
+  })[];
+  purchases: { id: string; at: string; item_name: string | null; total_cents: number; display_status: string }[];
+};
+
+/** null = la sesión venció, terminó o no es de quien la pide. */
+export async function getViewAs(sessionId: string): Promise<ViewAs | null> {
+  try {
+    return await rpc<ViewAs>("admin_view_as", { p_session_id: sessionId });
+  } catch (error) {
+    if (error instanceof Error && /permiso/.test(error.message)) return null;
+    throw error;
+  }
+}
+
+export type Subscription = {
+  id: string;
+  concept: string;
+  category: string;
+  vendor: string | null;
+  periodicity: "mensual" | "anual";
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  monthly_equivalent_cents: number;
+  start_date: string;
+  next_charge_date: string;
+  status: "activo" | "cancelado";
+  payment_method: string | null;
+  notes: string | null;
+  days_to_next: number;
+};
+
+export async function getSubscriptions(): Promise<Subscription[]> {
+  return rpc<Subscription[]>("admin_subscriptions", {});
 }
 
 export type CatalogOverviewRow = {
@@ -413,7 +497,7 @@ export type AlertRow = {
   title: string;
   detail: string | null;
   occurred_at: string | null;
-  target_type: "purchase" | "event" | "customer" | null;
+  target_type: "purchase" | "event" | "customer" | "expense" | null;
   target_id: string | null;
 };
 

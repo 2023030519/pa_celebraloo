@@ -80,6 +80,7 @@ export const AREA_PERMISSIONS: { prefix: string; anyOf: Permission[] }[] = [
   // Cuentas y roles; también la usa quien puede suspender cuentas.
   { prefix: "/usuarios", anyOf: ["roles.write", "clientes.suspender"] },
   { prefix: "/notas", anyOf: ["notas.write"] },
+  { prefix: "/ver-como", anyOf: ["clientes.ver_como"] },
 ];
 
 export function areaPermissions(pathname: string): Permission[] | null {

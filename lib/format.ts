@@ -143,3 +143,33 @@ export function dayRangeLabel(from: string, toExclusive: string): string {
   if (from === last) return fmt(from, true);
   return from.slice(0, 7) === last.slice(0, 7) ? `${fmt(from, false)}–${fmt(last, true)}` : `${fmt(from, true)}–${fmt(last, true)}`;
 }
+
+/** Acciones de admin_audit_log con nombre legible (Actividad y ficha del cliente). */
+export const ADMIN_ACTION_LABELS: Record<string, string> = {
+  "role.change": "Cambio de rol",
+  "staff.role": "Cambio de rol",
+  "catalog.update": "Catálogo editado",
+  "free_plan.reset": "Plan gratis devuelto",
+  "event.unlock": "Edición desbloqueada",
+  "event.relock": "Edición bloqueada de nuevo",
+  "event.delete": "Evento borrado",
+  "event.assign_plan": "Plan asignado",
+  "event.assign_complemento": "Complemento asignado",
+  "event.assign_acceso_total": "Acceso total asignado",
+  "event.courtesy": "Cortesía otorgada",
+  "account.disable": "Cuenta suspendida",
+  "account.enable": "Cuenta reactivada",
+  "account.delete": "Cuenta borrada",
+  "account.resend_confirmation": "Confirmación de correo reenviada",
+  "account.view_as": "Vista como usuario",
+  "admin_expenses.insert": "Gasto registrado",
+  "admin_expenses.update": "Gasto editado",
+  "admin_expenses.delete": "Gasto borrado",
+  "admin_recurring_expenses.insert": "Suscripción registrada",
+  "admin_recurring_expenses.update": "Suscripción editada",
+  "admin_recurring_expenses.delete": "Suscripción borrada",
+  "admin_settings.update": "Configuración cambiada",
+  "admin_set_aside_rules.insert": "Apartado creado",
+  "admin_set_aside_rules.update": "Apartado editado",
+  "admin_set_aside_rules.delete": "Apartado borrado",
+};

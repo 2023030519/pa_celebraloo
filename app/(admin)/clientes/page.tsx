@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/require-admin";
 import { listCustomers } from "@/lib/data/admin";
-import { getCatalog } from "@/lib/data/catalog";
 import { formatMxn } from "@/lib/format";
 import { Badge, PageTitle, Table, formatDate } from "@/components/ui";
 import { DataError } from "@/components/finance";
@@ -11,7 +10,8 @@ const PAGE_SIZE = 50;
 const FILTERS: Record<string, string> = {
   paying: "De pago",
   free: "Gratuitos",
-  disabled: "Deshabilitados",
+  disabled: "Suspendidos",
+  unconfirmed: "Correo sin confirmar",
   staff: "Staff",
 };
 
@@ -23,8 +23,6 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const filter = params.filtro && params.filtro in FILTERS ? params.filtro : null;
   const page = pageFrom(params.pagina);
 
-  const catalog = await getCatalog();
-  const planName = new Map(catalog.plans.map((plan) => [plan.key, plan.name]));
   let rows;
   try {
     rows = await listCustomers({ search: params.q?.trim() || null, filter, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
@@ -39,7 +37,10 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title="Clientes" subtitle="Todas las personas registradas en Celebraloo. Gastado = cobrado menos reembolsado." />
+      <PageTitle
+        title="Clientes"
+        subtitle="Todas las personas registradas en Celebraloo. El plan pertenece a cada evento: se ve en la ficha del cliente."
+      />
       <FilterBar resetHref="/clientes">
         <Field label="Buscar">
           <input name="q" defaultValue={params.q ?? ""} placeholder="Correo o nombre" className={`${fieldClass} w-64`} />
@@ -56,25 +57,30 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </Field>
       </FilterBar>
       <Table
-        head={["Cliente", "Email", "Registro", "Plan", "Eventos", "Gastado", "Último acceso", "Estado"]}
-        empty={rows.length === 0 ? "No hay clientes con esos filtros." : undefined}
+        head={["Cliente", "Email", "Fecha de registro", "Eventos", "Total gastado", "Último acceso", "Estado"]}
+        empty={
+          rows.length === 0 ? (params.q || filter ? "No hay clientes con esos filtros." : "Aún no hay clientes registrados.") : undefined
+        }
       >
         {rows.map((row) => (
-          <tr key={row.id} className="hover:bg-paper">
+          <tr key={row.id} className="relative hover:bg-paper">
             <td className="px-3 py-2.5">
-              <Link href={`/clientes/${row.id}`} className="font-medium hover:underline">
+              {/* Toda la fila abre la ficha: el enlace se estira sobre ella. */}
+              <Link href={`/clientes/${row.id}`} className="font-medium after:absolute after:inset-0 hover:underline">
                 {row.name ?? "Sin nombre"}
               </Link>
             </td>
             <td className="px-3 py-2.5 text-ink-800">{row.email}</td>
             <td className="px-3 py-2.5 whitespace-nowrap text-ink-600">{formatDate(row.registered_at)}</td>
-            <td className="px-3 py-2.5">{row.current_plan_key ? planName.get(row.current_plan_key) ?? row.current_plan_key : "—"}</td>
             <td className="px-3 py-2.5 text-right tabular-nums">{row.events}</td>
             <td className="px-3 py-2.5 text-right tabular-nums">{formatMxn(row.spent_cents)}</td>
-            <td className="px-3 py-2.5 whitespace-nowrap text-ink-600">{formatDate(row.last_sign_in_at, true)}</td>
+            <td className="px-3 py-2.5 whitespace-nowrap text-ink-600">
+              {row.last_activity_at ? formatDate(row.last_activity_at, true) : "Nunca"}
+            </td>
             <td className="px-3 py-2.5">
               <span className="flex flex-wrap gap-1">
-                {row.disabled ? <Badge tone="danger">Deshabilitada</Badge> : row.is_paying ? <Badge tone="ok">De pago</Badge> : <Badge>Gratuito</Badge>}
+                {row.disabled ? <Badge tone="danger">Suspendida</Badge> : row.is_paying ? <Badge tone="ok">De pago</Badge> : <Badge>Gratuito</Badge>}
+                {!row.email_confirmed && <Badge tone="warn">Sin confirmar</Badge>}
                 {row.is_staff && <Badge tone="info">Staff</Badge>}
               </span>
             </td>

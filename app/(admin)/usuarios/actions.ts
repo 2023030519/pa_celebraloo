@@ -2,44 +2,18 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { can, NO_PERMISSION, requireAdmin, type AdminSession } from "@/lib/auth/require-admin";
+import { can, NO_PERMISSION, requireAdmin } from "@/lib/auth/require-admin";
 import { isAdminRole, type AdminRole } from "@/lib/auth/permissions";
+import { setAccountSuspended } from "@/app/(admin)/clientes/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export type ActionResult = { ok: boolean; message: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** ~100 años: Supabase Auth no tiene "ban permanente", solo duración. */
-const BAN_FOREVER = "876000h";
 
 function missingMigration(error: { code?: string; message: string }): boolean {
   return error.code === "PGRST202" || /could not find the function/i.test(error.message);
-}
-
-/**
- * Lo que va por la API de Auth (deshabilitar, borrar) no pasa por una RPC que
- * lo registre: se anota aquí con service role. De mejor esfuerzo: sin la
- * migración 20260929160000 la tabla no existe y la acción sigue igual.
- */
-async function audit(
-  admin: AdminSession,
-  action: string,
-  target: { id: string; label: string },
-  reason: string | null,
-  detail: Record<string, unknown> | null = null
-) {
-  const { error } = await createServiceRoleClient().from("admin_audit_log").insert({
-    actor_profile_id: admin.userId,
-    actor_email: admin.email,
-    action,
-    target_type: "user",
-    target_id: target.id,
-    target_label: target.label,
-    detail,
-    reason,
-  });
-  if (error) console.error("[admin-audit]", action, error.message);
 }
 
 async function targetInfo(userId: string) {
@@ -54,37 +28,9 @@ async function targetInfo(userId: string) {
   return { email: auth?.user?.email ?? "", hasPanelRole, staffError };
 }
 
-/**
- * Deshabilitar = ban de Supabase Auth: la cuenta ya no puede iniciar sesión
- * ni renovar su sesión. Una sesión abierta dura hasta que vence su token
- * (1 h como máximo). Sus eventos e invitaciones públicas no se tocan.
- * Auth no tiene RPC para esto: va con service role y queda en Actividad.
- */
-export async function setAccountDisabled(userId: string, disabled: boolean): Promise<ActionResult> {
-  const admin = await requireAdmin();
-  if (!can(admin, "clientes.suspender")) return { ok: false, message: NO_PERMISSION };
-  if (!UUID.test(userId)) return { ok: false, message: "Usuario no válido." };
-  if (userId === admin.userId) return { ok: false, message: "No puedes deshabilitar tu propia cuenta." };
-
-  const target = await targetInfo(userId);
-  if (target.staffError) return { ok: false, message: target.staffError.message };
-  if (disabled && target.hasPanelRole) {
-    return { ok: false, message: "No se puede deshabilitar a alguien con rol en el panel. Quítale el rol primero." };
-  }
-
-  const { error } = await createServiceRoleClient().auth.admin.updateUserById(userId, {
-    ban_duration: disabled ? BAN_FOREVER : "none",
-    app_metadata: {
-      account_status: disabled ? "disabled" : "active",
-      account_status_by: admin.email,
-      account_status_at: new Date().toISOString(),
-    },
-  });
-  if (error) return { ok: false, message: error.message };
-
-  await audit(admin, disabled ? "account.disable" : "account.enable", { id: userId, label: target.email }, null);
-  refresh();
-  return { ok: true, message: disabled ? "Cuenta deshabilitada." : "Cuenta habilitada." };
+/** Suspender o reactivar con motivo: misma acción que la ficha del cliente. */
+export async function setAccountDisabled(userId: string, disabled: boolean, reason: string): Promise<ActionResult> {
+  return setAccountSuspended(userId, disabled, reason);
 }
 
 function roleError(error: { code?: string; message: string }): string {
@@ -196,6 +142,13 @@ export async function deleteAccount(userId: string, confirmEmail: string, reason
     };
   }
 
-  await audit(admin, "account.delete", { id: userId, label: target.email }, reason.trim());
+  const supabase = await createClient();
+  const { error: logError } = await supabase.rpc("admin_record_account_action", {
+    p_user_id: userId,
+    p_action: "account.delete",
+    p_reason: reason.trim(),
+    p_detail: { email: target.email },
+  });
+  if (logError) console.error("[admin-audit] account.delete", logError.message);
   redirect("/usuarios");
 }
