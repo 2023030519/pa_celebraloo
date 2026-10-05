@@ -26,12 +26,13 @@ export function Card({ title, children, className }: { title?: ReactNode; childr
   );
 }
 
-type Tone = "neutral" | "gold" | "ok" | "danger" | "info";
+export type Tone = "neutral" | "gold" | "ok" | "warn" | "danger" | "info";
 
 const toneClass: Record<Tone, string> = {
   neutral: "bg-surface-2 text-ink-800",
   gold: "bg-gold-100 text-gold-800",
   ok: "bg-ok-100 text-ok-700",
+  warn: "bg-warn-100 text-warn-700",
   danger: "bg-danger-100 text-danger-700",
   info: "bg-info-100 text-info-700",
 };
