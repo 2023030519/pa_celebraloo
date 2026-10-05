@@ -23,6 +23,13 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
      ventas solo de Stripe (sin cortesías) y corrección de Actividad.
    - `20261003100000_admin_catalog_overview.sql`: resumen comercial de Planes
      y permisos por evento en Actividad.
+   - **Panel V2** (carpeta `supabase/migrations/` de ESTE repo, en orden):
+     `20261005100000_admin_roles_permissions.sql`,
+     `20261005110000_profile_acquisition_last_seen.sql`,
+     `20261005120000_admin_definitions.sql` y
+     `20261005130000_admin_alerts.sql`. Aplícalas ANTES de desplegar el panel
+     V2. Sin ellas el panel funciona en modo de respaldo: solo entra el
+     superadmin de siempre.
 3. **Tu usuario admin:** ejecuta `supabase/crear-admin.sql` con tu correo.
 4. **Arrancar:**
    ```bash
@@ -32,30 +39,26 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
 
 ## Seguridad
 
-- Solo entra quien tiene sesión **y** está en `celebraloo_staff` con
-  `is_platform_admin = true` (`lib/auth/require-admin.ts`). Se revisa en el
-  layout y otra vez en cada Server Action.
-- Roles: **admin** entra al panel, ve todo y edita permisos sueltos,
-  complementos y el estado de las cuentas. **Superadmin** además: cambia roles
-  (ninguno / admin / superadmin), aplica planes completos y acceso total,
-  edita el catálogo (nombre, precio, activo), devuelve el plan gratis,
-  desbloquea la edición de un evento y borra eventos o cuentas. Siempre debe
-  quedar al menos un superadmin.
-- Todo lo de superadmin va por RPC con su sesión (`set_platform_admin_role`,
-  `update_catalog_item`, `reset_free_plan`, `set_event_edit_unlock`,
-  `admin_delete_event`): la base vuelve a validar el rol y lo anota en
-  `admin_audit_log` (página **Actividad**). Excepción: “Aplicar plan” y
-  “Acceso total” usan las RPCs de permisos, que no distinguen roles; esa regla
-  vive solo en `app/(admin)/eventos/[id]/actions.ts`.
-- La llave `service_role` solo se usa en el servidor y para **leer**, salvo lo
-  que va por la API admin de Auth (no hay RPC para eso): **deshabilitar /
-  habilitar** (ban; una sesión abierta dura hasta que vence su token, 1 h
-  máximo) y **borrar cuenta**; esas acciones se anotan en Actividad con service
-  role. También limpia Storage al borrar un evento.
-- Los cambios de permisos van por RPC con la sesión del admin
-  (`set_event_capability_override`, `clear_event_capability_override`): la base
-  vuelve a validar que sea admin y guarda quién, cuándo y por qué en
-  `event_entitlement_grants` (se ve en la sección Auditoría del evento).
+- Solo entra quien tiene sesión **y** un rol de panel en
+  `celebraloo_staff.admin_role`: **superadmin**, **administracion**,
+  **soporte** o **finanzas**. Sin rol = 404.
+- La matriz rol → acción vive en `public.admin_role_permissions`. El panel la
+  lee con `admin_my_permissions()` para el menú y para ocultar botones
+  (`lib/auth/permissions.ts`, `lib/auth/require-admin.ts`), pero la regla que
+  manda está en la BD: cada RPC empieza con
+  `private.require_admin_permission('<permiso>')` y las tablas del panel
+  tienen RLS por permiso. Soporte recibe las ventas sin subtotal, IVA,
+  comisión ni neto (la BD los omite).
+- `is_platform_admin` / `is_super_admin` se derivan del rol (los usa
+  Celebraloo): solo Superadmin y Administración son admin de plataforma.
+- Cambiar un rol va por `set_staff_role` con motivo obligatorio; siempre debe
+  quedar al menos un superadmin. Queda en Actividad.
+- La llave `service_role` solo se usa en el servidor: lecturas y lo que va por
+  la API admin de Auth (**deshabilitar / habilitar** y **borrar cuenta**),
+  que se anota en `admin_audit_log`. También limpia Storage al borrar un evento.
+- Los cambios de permisos de un evento van por RPC con la sesión de quien los
+  hace (`set_event_capability_override`, `clear_event_capability_override`,
+  permiso `eventos.permisos`) y quedan en `event_entitlement_grants`.
 
 ## Qué hace cada acción
 

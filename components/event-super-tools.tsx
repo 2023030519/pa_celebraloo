@@ -15,6 +15,8 @@ export function EventSuperTools({
   eventName,
   locked,
   activeUnlock,
+  canUnlock,
+  canDelete,
 }: {
   eventId: string;
   eventName: string;
@@ -22,6 +24,8 @@ export function EventSuperTools({
   locked: boolean;
   /** Desbloqueo vigente (null = sin excepción o ya venció). */
   activeUnlock: string | null;
+  canUnlock: boolean;
+  canDelete: boolean;
 }) {
   const [reason, setReason] = useState("");
   const [days, setDays] = useState(3);
@@ -57,6 +61,7 @@ export function EventSuperTools({
       </p>
 
       <div className="grid gap-3 lg:grid-cols-2">
+        {canUnlock && (
         <section className="flex flex-col gap-2 rounded-xl border border-ink-150 bg-surface p-4 shadow-sm">
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
             {locked ? <Lock size={14} aria-hidden="true" /> : <LockOpen size={14} aria-hidden="true" />}
@@ -93,7 +98,9 @@ export function EventSuperTools({
             )}
           </div>
         </section>
+        )}
 
+        {canDelete && (
         <section className="flex flex-col gap-2 rounded-xl border border-danger-700/40 bg-danger-100/40 p-4 shadow-sm">
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-danger-700">
             <Trash2 size={14} aria-hidden="true" /> Borrar evento
@@ -117,6 +124,7 @@ export function EventSuperTools({
             Borrar para siempre
           </button>
         </section>
+        )}
       </div>
     </div>
   );

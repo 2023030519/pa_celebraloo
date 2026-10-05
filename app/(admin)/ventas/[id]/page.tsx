@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { getSaleDetail } from "@/lib/data/admin";
 import { formatMxn } from "@/lib/format";
 import { stripeDisputeUrl, stripePaymentUrl } from "@/lib/stripe-links";
@@ -21,7 +21,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default async function SalePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireSuperAdmin();
+  await requirePermission("ventas.read");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
 
@@ -34,6 +34,8 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
   if (!detail) notFound();
 
   const { sale } = detail;
+  // Sin ventas.financiero la BD no manda subtotal, IVA, comisión ni neto.
+  const fin = detail.financials_visible !== false;
   const paymentUrl = stripePaymentUrl(sale.provider_payment_intent_id);
   const actionClass =
     "inline-flex h-9 items-center gap-1.5 rounded-md border border-ink-250 bg-surface px-3 font-semibold text-ink-800 hover:bg-paper";
@@ -93,11 +95,13 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
 
         <Card title="Dinero">
           <dl>
-            <Row label="Subtotal">{formatMxn(sale.subtotal_cents)}</Row>
-            <Row label={`IVA${sale.tax_rate_bps !== null ? ` (${sale.tax_rate_bps / 100}%)` : ""}`}>{formatMxn(sale.tax_cents)}</Row>
+            {fin && <Row label="Subtotal">{formatMxn(sale.subtotal_cents)}</Row>}
+            {fin && (
+              <Row label={`IVA${sale.tax_rate_bps != null ? ` (${sale.tax_rate_bps / 100}%)` : ""}`}>{formatMxn(sale.tax_cents)}</Row>
+            )}
             <Row label="Total cobrado">{formatMxn(sale.amount_total_cents)}</Row>
-            <Row label="Comisión de Stripe">{formatMxn(sale.stripe_fee_cents)}</Row>
-            <Row label="Ingreso neto (Stripe)">{formatMxn(sale.net_cents)}</Row>
+            {fin && <Row label="Comisión de Stripe">{formatMxn(sale.stripe_fee_cents)}</Row>}
+            {fin && <Row label="Ingreso neto (Stripe)">{formatMxn(sale.net_cents)}</Row>}
             <Row label="Reembolsado">{formatMxn(sale.refunded_cents)}</Row>
             <Row label="Payment Intent">{sale.provider_payment_intent_id ?? "—"}</Row>
             <Row label="Checkout Session">{sale.provider_checkout_session_id ?? "—"}</Row>
@@ -105,7 +109,8 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
               {sale.stripe_charge_id ?? "—"} · {sale.stripe_balance_transaction_id ?? "—"}
             </Row>
           </dl>
-          {sale.paid_at && sale.stripe_fee_cents === null && (
+          {!fin && <p className="mt-3 text-xs text-ink-600">Tu rol no ve el desglose financiero (subtotal, IVA, comisión y neto).</p>}
+          {fin && sale.paid_at && sale.stripe_fee_cents === null && (
             <p className="mt-3 text-xs text-gold-800">Aún sin comisión de Stripe: llega con el webhook o con el backfill.</p>
           )}
         </Card>
@@ -121,12 +126,12 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
         )}
       </p>
       <div className="mb-6">
-        <Table head={["Fecha", "Monto", "IVA", "Estado", "Motivo", "ID"]} empty={detail.refunds.length === 0 ? "Sin reembolsos." : undefined}>
+        <Table head={fin ? ["Fecha", "Monto", "IVA", "Estado", "Motivo", "ID"] : ["Fecha", "Monto", "Estado", "Motivo", "ID"]} empty={detail.refunds.length === 0 ? "Sin reembolsos." : undefined}>
           {detail.refunds.map((refund) => (
             <tr key={refund.id}>
               <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(refund.stripe_created_at, true)}</td>
               <td className="px-3 py-2.5 tabular-nums">{formatMxn(refund.amount_cents)}</td>
-              <td className="px-3 py-2.5 tabular-nums">{formatMxn(refund.tax_cents)}</td>
+              {fin && <td className="px-3 py-2.5 tabular-nums">{formatMxn(refund.tax_cents)}</td>}
               <td className="px-3 py-2.5">
                 <Badge tone={refund.status === "succeeded" ? "ok" : refund.status === "failed" ? "danger" : "neutral"}>{refund.status}</Badge>
               </td>
@@ -141,12 +146,12 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
         <>
           <h2 className="mb-2 text-[15px] font-semibold">Contracargos</h2>
           <div className="mb-6">
-            <Table head={["Abierto", "Monto", "Comisión", "Estado", "Motivo", "Cerrado", ""]}>
+            <Table head={fin ? ["Abierto", "Monto", "Comisión", "Estado", "Motivo", "Cerrado", ""] : ["Abierto", "Monto", "Estado", "Motivo", "Cerrado", ""]}>
               {detail.disputes.map((dispute) => (
                 <tr key={dispute.id}>
                   <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(dispute.stripe_created_at, true)}</td>
                   <td className="px-3 py-2.5 tabular-nums">{formatMxn(dispute.amount_cents)}</td>
-                  <td className="px-3 py-2.5 tabular-nums">{formatMxn(dispute.fee_cents)}</td>
+                  {fin && <td className="px-3 py-2.5 tabular-nums">{formatMxn(dispute.fee_cents)}</td>}
                   <td className="px-3 py-2.5">
                     <Badge tone={dispute.status === "won" ? "ok" : "danger"}>{dispute.status}</Badge>
                   </td>

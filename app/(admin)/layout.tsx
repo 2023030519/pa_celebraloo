@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { ROLE_LABELS } from "@/lib/auth/permissions";
 import { NavLinks } from "@/components/nav-links";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -11,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center justify-between gap-3 md:block">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-800">Celebraloo</p>
-            <p className="text-base font-semibold">{admin.isSuperAdmin ? "Administración" : "Admin"}</p>
+            <p className="text-base font-semibold">Panel · {ROLE_LABELS[admin.role]}</p>
           </div>
           {/* En móvil, salir queda arriba a la derecha; en computadora, al pie. */}
           <form action="/auth/signout" method="post" className="md:hidden">
@@ -21,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </button>
           </form>
         </div>
-        <NavLinks isSuperAdmin={admin.isSuperAdmin} />
+        <NavLinks permissions={[...admin.permissions]} />
         <div className="hidden border-t border-ink-150 pt-3 md:mt-auto md:block">
           <p className="truncate text-xs text-ink-600" title={admin.email}>
             {admin.email}

@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { listSales } from "@/lib/data/admin";
 import { getCatalog } from "@/lib/data/catalog";
 import { PAYMENT_STATUS, addDays, isoDayOrNull } from "@/lib/format";
@@ -11,7 +11,7 @@ const PAGE_SIZE = 50;
 type Search = { desde?: string; hasta?: string; estado?: string; producto?: string; q?: string; evento?: string; pagina?: string };
 
 export default async function SalesPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireSuperAdmin();
+  await requirePermission("ventas.read");
   const params = await searchParams;
   const from = isoDayOrNull(params.desde);
   const until = isoDayOrNull(params.hasta);

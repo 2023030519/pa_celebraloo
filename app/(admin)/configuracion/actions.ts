@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { parsePesosToCents } from "@/lib/format";
 
@@ -25,7 +25,7 @@ export type SettingsInput = {
 };
 
 export async function saveSettings(input: SettingsInput): Promise<ActionResult> {
-  const admin = await requireSuperAdmin();
+  const admin = await requirePermission("config.write");
   const email = input.supportEmail.trim();
   if (email && !EMAIL.test(email)) return { ok: false, message: "El email de soporte no es válido." };
   if (!input.companyName.trim()) return { ok: false, message: "El nombre de Celebraloo no puede quedar vacío." };
@@ -57,7 +57,7 @@ export async function saveSettings(input: SettingsInput): Promise<ActionResult> 
 export type RuleInput = { name: string; kind: string; value: string; base: string; isActive: boolean };
 
 export async function saveRule(id: string | null, input: RuleInput): Promise<ActionResult> {
-  await requireSuperAdmin();
+  await requirePermission("config.write");
   if (id !== null && !UUID.test(id)) return { ok: false, message: "Apartado no válido." };
   if (!input.name.trim()) return { ok: false, message: "Ponle nombre al apartado." };
   if (input.kind !== "percent" && input.kind !== "fixed") return { ok: false, message: "Elige porcentaje o monto fijo." };
@@ -81,7 +81,7 @@ export async function saveRule(id: string | null, input: RuleInput): Promise<Act
 }
 
 export async function deleteRule(id: string): Promise<ActionResult> {
-  await requireSuperAdmin();
+  await requirePermission("config.write");
   if (!UUID.test(id)) return { ok: false, message: "Apartado no válido." };
   const supabase = await createClient();
   const { error } = await supabase.from("admin_set_aside_rules").delete().eq("id", id);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, requirePermission } from "@/lib/auth/require-admin";
 import { getUserDetail } from "@/lib/data/users";
 import { formatMxn } from "@/lib/data/catalog";
 import { Badge, Card, PageTitle, Table, formatDate } from "@/components/ui";
@@ -9,7 +9,10 @@ import { RoleCell } from "@/components/role-cell";
 import { UserSuperTools } from "@/components/user-super-tools";
 
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("roles.write", "clientes.suspender");
+  const canEditRole = can(admin, "roles.write");
+  const canResetFreePlan = can(admin, "clientes.plan_gratis");
+  const canDelete = can(admin, "clientes.borrar");
   const { id } = await params;
   const user = await getUserDetail(id);
   if (!user) notFound();
@@ -23,14 +26,22 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
             {user.name || "Sin nombre"}
             {user.disabled && <Badge tone="danger">Cuenta deshabilitada</Badge>}
             {!user.confirmed && <Badge tone="danger">Correo sin confirmar</Badge>}
-            {user.isPlatformAdmin ? <RoleCell user={user} canEdit={false} /> : user.isStaff && <Badge tone="info">Staff</Badge>}
+            {user.adminRole ? <RoleCell role={user.adminRole} /> : user.isStaff && <Badge tone="info">Staff</Badge>}
           </span>
         }
         actions={
           <AccountToggle
             userId={user.id}
             disabled={user.disabled}
-            locked={user.id === admin.userId ? "Tu cuenta" : user.isPlatformAdmin && !user.disabled ? "Admin" : undefined}
+            locked={
+              !can(admin, "clientes.suspender")
+                ? "Sin permiso"
+                : user.id === admin.userId
+                  ? "Tu cuenta"
+                  : user.adminRole && !user.disabled
+                    ? "Staff del panel"
+                    : undefined
+            }
           />
         }
       />
@@ -49,16 +60,19 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
         </Card>
       </div>
 
-      {admin.isSuperAdmin && (
+      {(canEditRole || canResetFreePlan || canDelete) && (
         <>
-          <h2 className="mb-2 text-[13px] font-semibold">Superadmin</h2>
+          <h2 className="mb-2 text-[13px] font-semibold">Acciones de cuenta</h2>
           <div className="mb-6">
             <UserSuperTools
               userId={user.id}
               email={user.email}
-              role={user.isSuperAdmin ? "superadmin" : user.isPlatformAdmin ? "admin" : "none"}
+              role={user.adminRole}
               isSelf={user.id === admin.userId}
               freePlanUsed={user.freePlanUsed}
+              canEditRole={canEditRole}
+              canResetFreePlan={canResetFreePlan}
+              canDelete={canDelete}
             />
           </div>
         </>

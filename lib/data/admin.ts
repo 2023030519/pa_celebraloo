@@ -3,9 +3,9 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Lecturas del Panel V1. Todas van por las RPCs admin_* (migraciones
- * 20261001120000 y 20261002100000) con la sesión de la superadmin: la BD
- * valida el rol y hace TODOS los cálculos. Aquí no se suma ni se resta dinero.
+ * Lecturas del panel. Todas van por las RPCs admin_* con la sesión de quien
+ * entra: la BD valida el permiso de su rol y hace TODOS los cálculos. Aquí no
+ * se suma ni se resta dinero.
  */
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const supabase = await createClient();
@@ -14,7 +14,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
     if (error.code === "PGRST202" || /could not find the function/i.test(error.message)) {
       throw new Error(`Falta aplicar la migración que crea ${fn} en Supabase.`);
     }
-    if (error.code === "42501") throw new Error("Tu cuenta no es superadmin en la base de datos.");
+    if (error.code === "42501") throw new Error("Tu rol no tiene permiso para ver esta información.");
     throw new Error(`${fn}: ${error.message}`);
   }
   return data as T;
@@ -148,6 +148,8 @@ export type SaleDetail = {
     item_name: string | null;
   };
   has_failed_attempt: boolean;
+  /** false: el rol no tiene ventas.financiero y la BD omitió el desglose. */
+  financials_visible?: boolean;
   customer_name: string | null;
   event_name: string | null;
   refunds: { id: string; amount_cents: number; tax_cents: number; status: string; reason: string | null; stripe_created_at: string }[];
@@ -289,6 +291,8 @@ export type CustomerCard = {
   disabled: boolean;
   is_staff: boolean;
   spent_cents: number;
+  /** Definición oficial de "cliente de pago" (migración 20261005120000). */
+  is_paying?: boolean;
   paid_purchases: number;
   events: number;
   current_plan_key: string | null;

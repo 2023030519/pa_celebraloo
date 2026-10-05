@@ -41,11 +41,11 @@ export function PermissionsEditor({
   capabilities,
   plans,
   addons,
-  isSuperAdmin,
+  canAssignPlan,
 }: {
   eventId: string;
-  /** Aplicar plan y Acceso total solo para superadmin (la acción también lo valida). */
-  isSuperAdmin: boolean;
+  /** Aplicar plan y Acceso total: eventos.asignar_plan (la acción también lo valida). */
+  canAssignPlan: boolean;
   capabilities: EditorCapability[];
   plans: EditorOption[];
   addons: EditorOption[];
@@ -92,7 +92,7 @@ export function PermissionsEditor({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {isSuperAdmin && (
+        {canAssignPlan && (
         <section className="flex flex-col gap-2 rounded-xl border border-ink-150 bg-surface p-4 shadow-sm">
           <h3 className="text-[13px] font-semibold">Aplicar plan</h3>
           <p className="text-xs text-ink-600">Deja los valores exactos del plan (también baja límites). Salir de Tour quita “Elegir plan”.</p>
@@ -138,7 +138,7 @@ export function PermissionsEditor({
           </button>
         </section>
 
-        {isSuperAdmin ? (
+        {canAssignPlan ? (
         <section className="flex flex-col gap-2 rounded-xl border border-gold-600/60 bg-gold-100/40 p-4 shadow-sm">
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
             <Sparkles size={14} aria-hidden="true" /> Acceso total
@@ -172,7 +172,7 @@ export function PermissionsEditor({
         </section>
         ) : (
           <p className="self-center text-xs text-ink-600 lg:col-span-2">
-            Aplicar un plan completo y dar acceso total son solo para superadmin.
+            Tu rol no puede aplicar un plan completo ni dar acceso total.
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { isAdminRole, type AdminRole } from "@/lib/auth/permissions";
 
 export type UserRow = {
   id: string;
@@ -12,9 +13,8 @@ export type UserRow = {
   confirmed: boolean;
   eventCount: number;
   isStaff: boolean;
-  isPlatformAdmin: boolean;
-  /** Admin que además puede cambiar roles de otros admins. */
-  isSuperAdmin: boolean;
+  /** Rol en el panel; null = sin acceso. */
+  adminRole: AdminRole | null;
   /** Cuenta deshabilitada desde el panel (ban de Supabase Auth). */
   disabled: boolean;
 };
@@ -54,18 +54,26 @@ function fullName(profile: { first_name: string | null; last_name: string | null
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ");
 }
 
-type StaffRow = { profile_id: string; is_platform_admin: boolean; is_super_admin?: boolean };
+type StaffRow = { profile_id: string; admin_role: AdminRole | null };
 
-/** Sin la migración 20260929140000 no existe is_super_admin: se lee sin ella. */
+/** Sin la migración de roles (20261005100000) no existe admin_role: se deriva de los flags. */
 async function readStaff(profileId?: string): Promise<StaffRow[]> {
   const service = createServiceRoleClient();
-  const read = (columns: string) => {
+  const read = <T,>(columns: string) => {
     const query = service.from("celebraloo_staff").select(columns);
-    return (profileId ? query.eq("profile_id", profileId) : query).returns<StaffRow[]>();
+    return (profileId ? query.eq("profile_id", profileId) : query).returns<T[]>();
   };
-  let { data, error } = await read("profile_id, is_platform_admin, is_super_admin");
-  if (error?.code === "42703") ({ data, error } = await read("profile_id, is_platform_admin"));
-  return data ?? [];
+  const { data, error } = await read<{ profile_id: string; admin_role: string | null }>("profile_id, admin_role");
+  if (error?.code === "42703") {
+    const legacy = await read<{ profile_id: string; is_platform_admin: boolean; is_super_admin: boolean }>(
+      "profile_id, is_platform_admin, is_super_admin"
+    );
+    return (legacy.data ?? []).map((row) => ({
+      profile_id: row.profile_id,
+      admin_role: row.is_super_admin ? "superadmin" : row.is_platform_admin ? "administracion" : null,
+    }));
+  }
+  return (data ?? []).map((row) => ({ profile_id: row.profile_id, admin_role: isAdminRole(row.admin_role) ? row.admin_role : null }));
 }
 
 export async function listUsers(query: string): Promise<UserRow[]> {
@@ -95,8 +103,7 @@ export async function listUsers(query: string): Promise<UserRow[]> {
       confirmed: Boolean(user.email_confirmed_at),
       eventCount: eventCount.get(user.id) ?? 0,
       isStaff: staffById.has(user.id),
-      isPlatformAdmin: staffById.get(user.id)?.is_platform_admin === true,
-      isSuperAdmin: staffById.get(user.id)?.is_super_admin === true,
+      adminRole: staffById.get(user.id)?.admin_role ?? null,
       disabled: isDisabled(user),
     }))
     .filter((row) => !needle || row.email.toLowerCase().includes(needle) || row.name.toLowerCase().includes(needle))
@@ -141,8 +148,7 @@ export async function getUserDetail(userId: string): Promise<UserDetail | null> 
     confirmed: Boolean(auth.user.email_confirmed_at),
     eventCount: memberships.data?.length ?? 0,
     isStaff: Boolean(staff),
-    isPlatformAdmin: staff?.is_platform_admin === true,
-    isSuperAdmin: staff?.is_super_admin === true,
+    adminRole: staff?.admin_role ?? null,
     disabled: isDisabled(auth.user),
     freePlanUsed: freePlan.error ? null : (freePlan.data?.length ?? 0) > 0,
     events: (memberships.data ?? [])

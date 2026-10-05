@@ -5,6 +5,7 @@ import { Gift, ShieldCheck, Trash2 } from "lucide-react";
 import { deleteAccount, resetFreePlan, type ActionResult } from "@/app/(admin)/usuarios/actions";
 import { RoleSelect } from "@/components/role-select";
 import { cn } from "@/components/ui";
+import type { AdminRole } from "@/lib/auth/permissions";
 
 const inputClass =
   "h-9 rounded-md border border-ink-250 bg-surface px-2.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30 disabled:opacity-50";
@@ -18,12 +19,18 @@ export function UserSuperTools({
   role,
   isSelf,
   freePlanUsed,
+  canEditRole,
+  canResetFreePlan,
+  canDelete,
 }: {
   userId: string;
   email: string;
-  role: "superadmin" | "admin" | "none";
+  role: AdminRole | null;
   isSelf: boolean;
   freePlanUsed: boolean | null;
+  canEditRole: boolean;
+  canResetFreePlan: boolean;
+  canDelete: boolean;
 }) {
   const [reason, setReason] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -58,18 +65,16 @@ export function UserSuperTools({
       </p>
 
       <div className="grid gap-3 lg:grid-cols-3">
+        {canEditRole && (
         <section className={cardClass}>
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
             <ShieldCheck size={14} aria-hidden="true" /> Rol en el panel
           </h3>
-          <p className="text-xs text-ink-600">
-            Admin entra al panel. Superadmin además maneja roles, catálogo, plan gratis, desbloqueos y borrados.
-          </p>
-          <div className="mt-auto">
-            <RoleSelect userId={userId} role={role} />
-          </div>
+          <RoleSelect userId={userId} role={role} />
         </section>
+        )}
 
+        {canResetFreePlan && (
         <section className={cardClass}>
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
             <Gift size={14} aria-hidden="true" /> Recorrido gratuito
@@ -89,7 +94,9 @@ export function UserSuperTools({
             Devolver plan gratis
           </button>
         </section>
+        )}
 
+        {canDelete && (
         <section className={cn(cardClass, "border-danger-700/40 bg-danger-100/40")}>
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-danger-700">
             <Trash2 size={14} aria-hidden="true" /> Borrar cuenta
@@ -118,6 +125,7 @@ export function UserSuperTools({
             </>
           )}
         </section>
+        )}
       </div>
     </div>
   );

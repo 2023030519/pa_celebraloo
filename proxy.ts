@@ -1,6 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isSuperAdminPath } from "@/lib/auth/areas";
+import { areaPermissions, PERMISSIONS } from "@/lib/auth/permissions";
+
+/** Mismo criterio que requireAdmin, incluido el respaldo previo a la migración de roles. */
+async function readPermissions(supabase: ReturnType<typeof createServerClient>, userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.rpc("admin_my_permissions");
+  if (!error) return new Set(((data ?? []) as { permission: string }[]).map((row) => row.permission));
+  if (error.code !== "PGRST202" && !/could not find the function/i.test(error.message)) return new Set();
+  const { data: row } = await supabase
+    .from("celebraloo_staff")
+    .select("is_platform_admin, is_super_admin")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  const staff = row as { is_platform_admin: boolean; is_super_admin: boolean } | null;
+  return staff?.is_platform_admin && staff.is_super_admin ? new Set(PERMISSIONS) : new Set();
+}
 
 /**
  * Refresca la sesión y manda a /login a quien no tiene sesión. Es solo el
@@ -40,16 +54,13 @@ export async function proxy(request: NextRequest) {
     return redirect;
   }
 
-  // Con sesión: quien no es admin (o no es superadmin en las secciones del
-  // Panel V1) ve un 404, no un "sin permiso". celebraloo_staff solo es
-  // legible para staff (RLS), así que un cliente no obtiene fila.
+  // Con sesión: quien no tiene rol de panel, o no tiene el permiso de la
+  // sección, ve un 404, no un "sin permiso". Es el primer filtro; la regla
+  // que manda está en requireAdmin/requirePermission y en cada RPC.
   if (data?.claims && !isPublic) {
-    const { data: staff } = await supabase
-      .from("celebraloo_staff")
-      .select("is_platform_admin, is_super_admin")
-      .eq("profile_id", data.claims.sub)
-      .maybeSingle<{ is_platform_admin: boolean; is_super_admin: boolean }>();
-    const allowed = staff?.is_platform_admin === true && (!isSuperAdminPath(pathname) || staff.is_super_admin === true);
+    const permissions = await readPermissions(supabase, data.claims.sub);
+    const needed = areaPermissions(pathname);
+    const allowed = permissions.size > 0 && (!needed || needed.some((permission) => permissions.has(permission)));
     if (!allowed) {
       const notFound = NextResponse.rewrite(new URL("/__no-existe", request.url), { status: 404 });
       response.cookies.getAll().forEach((cookie) => notFound.cookies.set(cookie));

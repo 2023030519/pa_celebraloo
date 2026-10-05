@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput, formatMxn } from "@/lib/format";
 import { PageTitle, formatDate } from "@/components/ui";
@@ -8,7 +8,7 @@ import { ExpenseForm } from "@/components/expense-form";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireSuperAdmin();
+  await requirePermission("gastos.write");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
 

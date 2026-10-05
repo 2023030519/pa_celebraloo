@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, NO_PERMISSION, requireAdmin } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type ActionResult = { ok: boolean; message: string };
@@ -29,7 +29,7 @@ export async function updateCatalogItem(
   reason: string
 ): Promise<ActionResult> {
   const admin = await requireAdmin();
-  if (!admin.isSuperAdmin) return { ok: false, message: "Solo un superadmin puede editar el catálogo." };
+  if (!can(admin, "planes.write")) return { ok: false, message: NO_PERMISSION };
   if (kind !== "plan" && kind !== "addon") return { ok: false, message: "Tipo no válido." };
   if (!name.trim()) return { ok: false, message: "El nombre no puede quedar vacío." };
   if (reason.trim().length < 3) return { ok: false, message: "Escribe un motivo (mínimo 3 caracteres)." };
@@ -48,7 +48,7 @@ export async function updateCatalogItem(
     p_reason: reason.trim(),
   });
   if (error) {
-    if (error.code === "42501") return { ok: false, message: "Solo un superadmin puede editar el catálogo." };
+    if (error.code === "42501") return { ok: false, message: NO_PERMISSION };
     if (error.code === "PGRST202" || /could not find the function/i.test(error.message)) {
       return { ok: false, message: "Falta aplicar la migración 20260929160000_super_admin_tools.sql en Supabase." };
     }

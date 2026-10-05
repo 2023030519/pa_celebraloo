@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { EXPENSE_CATEGORIES, parsePesosToCents } from "@/lib/format";
 
@@ -56,7 +56,7 @@ function toRow(input: ExpenseInput): { row: Record<string, unknown> } | { error:
 }
 
 export async function saveExpense(id: string | null, input: ExpenseInput): Promise<ActionResult> {
-  const admin = await requireSuperAdmin();
+  const admin = await requirePermission("gastos.write");
   if (id !== null && !UUID.test(id)) return { ok: false, message: "Gasto no válido." };
   const parsed = toRow(input);
   if ("error" in parsed) return { ok: false, message: parsed.error };
@@ -71,7 +71,7 @@ export async function saveExpense(id: string | null, input: ExpenseInput): Promi
 }
 
 export async function deleteExpense(id: string): Promise<ActionResult> {
-  await requireSuperAdmin();
+  await requirePermission("gastos.write");
   if (!UUID.test(id)) return { ok: false, message: "Gasto no válido." };
   const supabase = await createClient();
   const { error } = await supabase.from("admin_expenses").delete().eq("id", id);

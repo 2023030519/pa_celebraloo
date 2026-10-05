@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { getMonthlyReport } from "@/lib/data/admin";
 import { formatInt, formatMxn, monthLabel, todayMx } from "@/lib/format";
 import { REPORT_COLUMNS, REPORT_NOTE, reportRange } from "@/lib/reports";
@@ -9,7 +9,7 @@ import { DataError } from "@/components/finance";
 import { Field, FilterBar, fieldClass } from "@/components/filters";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ desde?: string; meses?: string }> }) {
-  await requireSuperAdmin();
+  await requirePermission("reportes.read");
   const params = await searchParams;
   const { from, months } = reportRange(params.desde, params.meses, todayMx().slice(0, 7));
 

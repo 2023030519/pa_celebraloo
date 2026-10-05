@@ -3,62 +3,6 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getEmailMap } from "@/lib/data/users";
 import type { CapabilityValue } from "@/lib/data/catalog";
 
-export type EventRow = {
-  id: string;
-  name: string;
-  eventType: string;
-  eventDate: string | null;
-  style: string | null;
-  createdAt: string;
-  ownerEmail: string;
-  entitlementCount: number;
-  isTour: boolean;
-  archived: boolean;
-};
-
-export async function listEvents(query: string): Promise<EventRow[]> {
-  const service = createServiceRoleClient();
-  const [events, entitlements, emails] = await Promise.all([
-    service
-      .from("events")
-      .select("id, name, event_type, event_date, style, created_at, created_by, archived_at")
-      .order("created_at", { ascending: false })
-      .limit(1000),
-    service.from("event_entitlements").select("event_id, capability_key"),
-    getEmailMap(),
-  ]);
-  if (events.error) throw new Error(`No se pudieron leer los eventos: ${events.error.message}`);
-
-  const counts = new Map<string, number>();
-  const tour = new Set<string>();
-  for (const row of entitlements.data ?? []) {
-    counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1);
-    if (row.capability_key === "choose_plan") tour.add(row.event_id);
-  }
-
-  const needle = query.trim().toLowerCase();
-  return (events.data ?? [])
-    .map((event) => ({
-      id: event.id,
-      name: event.name,
-      eventType: event.event_type,
-      eventDate: event.event_date,
-      style: event.style,
-      createdAt: event.created_at,
-      ownerEmail: emails.get(event.created_by) ?? "",
-      entitlementCount: counts.get(event.id) ?? 0,
-      isTour: tour.has(event.id),
-      archived: Boolean(event.archived_at),
-    }))
-    .filter(
-      (row) =>
-        !needle ||
-        row.name.toLowerCase().includes(needle) ||
-        row.ownerEmail.toLowerCase().includes(needle) ||
-        row.id === needle
-    );
-}
-
 export type Entitlement = CapabilityValue & { capability_key: string; source: string; updated_at: string };
 
 export type Grant = CapabilityValue & {

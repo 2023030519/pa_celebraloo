@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { getMonthlyReport } from "@/lib/data/admin";
 import { centsToInput, todayMx } from "@/lib/format";
 import { REPORT_COLUMNS, reportRange } from "@/lib/reports";
@@ -9,7 +9,7 @@ import { REPORT_COLUMNS, reportRange } from "@/lib/reports";
  * los acentos.
  */
 export async function GET(request: Request) {
-  await requireSuperAdmin();
+  await requirePermission("reportes.read");
   const url = new URL(request.url);
   const { from, months } = reportRange(url.searchParams.get("desde") ?? undefined, url.searchParams.get("meses") ?? undefined, todayMx().slice(0, 7));
   const rows = await getMonthlyReport(from, months);

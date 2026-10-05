@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, NO_PERMISSION, requireAdmin } from "@/lib/auth/require-admin";
+import type { Permission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -20,7 +21,7 @@ const LIST_PAGE = 1000;
  * admin_audit_log.
  */
 function friendlyError(error: { code?: string; message: string }): string {
-  if (error.code === "42501") return "Solo un superadmin puede hacer esto.";
+  if (error.code === "42501") return NO_PERMISSION;
   if (error.code === "P0002") return "El evento ya no existe.";
   if (error.code === "22023" && /confirmation/.test(error.message)) return "El nombre no coincide. Escríbelo exactamente igual.";
   if (error.code === "22023" && /reason/.test(error.message)) return "Escribe un motivo (mínimo 3 caracteres).";
@@ -30,16 +31,16 @@ function friendlyError(error: { code?: string; message: string }): string {
   return error.message;
 }
 
-async function guard(eventId: string): Promise<string | null> {
+async function guard(eventId: string, permission: Permission): Promise<string | null> {
   const admin = await requireAdmin();
-  if (!admin.isSuperAdmin) return "Solo un superadmin puede hacer esto.";
+  if (!can(admin, permission)) return NO_PERMISSION;
   if (!UUID.test(eventId)) return "Evento no válido.";
   return null;
 }
 
 /** days null = quitar el desbloqueo (vuelve la regla normal). */
 export async function setEditUnlock(eventId: string, days: number | null, reason: string): Promise<ActionResult> {
-  const denied = await guard(eventId);
+  const denied = await guard(eventId, "eventos.desbloquear");
   if (denied) return { ok: false, message: denied };
   if (days !== null && !UNLOCK_DAYS.has(days)) return { ok: false, message: "Duración no válida." };
 
@@ -74,7 +75,7 @@ async function removeFolder(bucket: string, prefix: string): Promise<boolean> {
  * cascada no los toca y sin el evento ya no se sabría qué carpetas eran suyas).
  */
 export async function deleteEvent(eventId: string, confirmName: string, reason: string): Promise<ActionResult> {
-  const denied = await guard(eventId);
+  const denied = await guard(eventId, "eventos.borrar");
   if (denied) return { ok: false, message: denied };
 
   const service = createServiceRoleClient();

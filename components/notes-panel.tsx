@@ -4,7 +4,7 @@ import { getEmailMap } from "@/lib/data/users";
 import { Card, formatDate } from "@/components/ui";
 import { NoteForm, DeleteNoteButton } from "@/components/note-form";
 
-/** Notas internas de una venta, cliente o evento. Solo las ve la superadmin (RLS). */
+/** Notas internas de una venta, cliente o evento. Las ve el staff con notas.write (RLS). */
 export async function NotesPanel({ targetType, targetId }: { targetType: "purchase" | "customer" | "event"; targetId: string }) {
   const supabase = await createClient();
   const [{ data: notes, error }, emails] = await Promise.all([

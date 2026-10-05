@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { getFinanceSummary, getSetAsideBreakdown, type FinanceSummary, type SetAsideRow } from "@/lib/data/admin";
 import { formatMxn, monthLabel, monthOrCurrent, monthRange, shiftMonth, todayMx } from "@/lib/format";
 import { PageTitle, Table, cn } from "@/components/ui";
@@ -38,7 +38,7 @@ function describeRule(row: SetAsideRow): string {
 }
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
-  await requireSuperAdmin();
+  await requirePermission("finanzas.read");
   const month = monthOrCurrent((await searchParams).mes);
   const range = monthRange(month);
   const isCurrent = month === todayMx().slice(0, 7);

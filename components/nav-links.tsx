@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarHeart,
-  ChartNoAxesColumn,
   FileSpreadsheet,
   History,
   House,
@@ -18,11 +17,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/components/ui";
+import { areaPermissions, type Permission } from "@/lib/auth/permissions";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
-// Menú del brief (Panel V1).
-const SUPER_ADMIN_NAV: NavItem[] = [
+// Cada entrada se muestra solo si el rol tiene el permiso de esa sección
+// (AREA_PERMISSIONS, el mismo mapa que usa el proxy).
+const NAV: NavItem[] = [
   { href: "/", label: "Inicio", icon: House },
   { href: "/ventas", label: "Ventas", icon: BadgeDollarSign },
   { href: "/finanzas", label: "Finanzas", icon: Landmark },
@@ -36,17 +37,10 @@ const SUPER_ADMIN_NAV: NavItem[] = [
   { href: "/usuarios", label: "Cuentas y roles", icon: ShieldCheck },
 ];
 
-const ADMIN_NAV: NavItem[] = [
-  { href: "/", label: "Resumen", icon: ChartNoAxesColumn },
-  { href: "/usuarios", label: "Usuarios", icon: UserRound },
-  { href: "/eventos", label: "Eventos", icon: CalendarHeart },
-  { href: "/catalogo", label: "Catálogo", icon: Tags },
-  { href: "/actividad", label: "Actividad", icon: History },
-];
-
-export function NavLinks({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export function NavLinks({ permissions }: { permissions: Permission[] }) {
   const pathname = usePathname();
-  const items = isSuperAdmin ? SUPER_ADMIN_NAV : ADMIN_NAV;
+  const allowed = new Set(permissions);
+  const items = NAV.filter(({ href }) => (areaPermissions(href) ?? []).some((permission) => allowed.has(permission)));
 
   return (
     <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:mx-0 md:flex-col md:px-0">

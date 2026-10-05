@@ -1,18 +1,18 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, requirePermission } from "@/lib/auth/require-admin";
 import { listUsers } from "@/lib/data/users";
 import { AccountToggle } from "@/components/account-toggle";
 import { RoleCell } from "@/components/role-cell";
 import { Badge, PageTitle, SearchForm, Table } from "@/components/ui";
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("roles.write", "clientes.suspender");
   const { q = "" } = await searchParams;
   const users = await listUsers(q);
 
   return (
     <>
-      <PageTitle title="Usuarios" subtitle={`${users.length} ${users.length === 1 ? "usuario" : "usuarios"}`} />
+      <PageTitle title="Cuentas y roles" subtitle={`${users.length} ${users.length === 1 ? "usuario" : "usuarios"}`} />
       <SearchForm defaultValue={q} placeholder="Buscar por correo o nombre" />
       <Table
         head={["Usuario", "Número de eventos", "Estado", "Rol", "Habilitar / deshabilitar"]}
@@ -31,17 +31,25 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               <span className="flex flex-wrap gap-1">
                 {user.disabled ? <Badge tone="danger">Deshabilitada</Badge> : <Badge tone="ok">Activa</Badge>}
                 {!user.confirmed && <Badge tone="danger">Sin confirmar</Badge>}
-                {!user.isPlatformAdmin && user.isStaff && <Badge tone="info">Staff</Badge>}
+                {!user.adminRole && user.isStaff && <Badge tone="info">Staff</Badge>}
               </span>
             </td>
             <td className="px-3 py-2.5">
-              <RoleCell user={user} canEdit={admin.isSuperAdmin} />
+              <RoleCell role={user.adminRole} />
             </td>
             <td className="px-3 py-2.5">
               <AccountToggle
                 userId={user.id}
                 disabled={user.disabled}
-                locked={user.id === admin.userId ? "Tu cuenta" : user.isPlatformAdmin && !user.disabled ? "Admin" : undefined}
+                locked={
+                  !can(admin, "clientes.suspender")
+                    ? "Sin permiso"
+                    : user.id === admin.userId
+                      ? "Tu cuenta"
+                      : user.adminRole && !user.disabled
+                        ? "Staff del panel"
+                        : undefined
+                }
               />
             </td>
           </tr>

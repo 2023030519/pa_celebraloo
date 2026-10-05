@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCatalog } from "@/lib/data/catalog";
 import { centsToInput, formatMxn } from "@/lib/format";
@@ -15,7 +15,7 @@ function bpsToPercent(bps: number): string {
 }
 
 export default async function SettingsPage() {
-  await requireSuperAdmin();
+  await requirePermission("config.write");
   const supabase = await createClient();
   const [{ data: settings, error: settingsError }, { data: rules, error: rulesError }, catalog] = await Promise.all([
     supabase.from("admin_settings").select("*").eq("id", true).maybeSingle(),

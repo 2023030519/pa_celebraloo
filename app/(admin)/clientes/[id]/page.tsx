@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { can, requirePermission } from "@/lib/auth/require-admin";
 import { getCustomerCard } from "@/lib/data/admin";
 import { getCatalog } from "@/lib/data/catalog";
 import { formatDay, formatMxn } from "@/lib/format";
@@ -20,7 +20,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 }
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireSuperAdmin();
+  const admin = await requirePermission("clientes.read");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
 
@@ -43,17 +43,19 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           <span className="flex flex-wrap items-center gap-2">
             {card.email}
             {card.disabled && <Badge tone="danger">Cuenta deshabilitada</Badge>}
-            {card.spent_cents > 0 ? <Badge tone="ok">De pago</Badge> : <Badge>Gratuito</Badge>}
+            {(card.is_paying ?? card.spent_cents > 0) ? <Badge tone="ok">De pago</Badge> : <Badge>Gratuito</Badge>}
             {card.is_staff && <Badge tone="info">Staff (no cuenta en métricas)</Badge>}
           </span>
         }
         actions={
-          <Link
-            href={`/usuarios/${card.id}`}
-            className="inline-flex h-9 items-center rounded-md border border-ink-250 bg-surface px-3 font-semibold text-ink-800 hover:bg-paper"
-          >
-            Cuenta y acceso
-          </Link>
+          (can(admin, "roles.write") || can(admin, "clientes.suspender")) && (
+            <Link
+              href={`/usuarios/${card.id}`}
+              className="inline-flex h-9 items-center rounded-md border border-ink-250 bg-surface px-3 font-semibold text-ink-800 hover:bg-paper"
+            >
+              Cuenta y acceso
+            </Link>
+          )
         }
       />
 

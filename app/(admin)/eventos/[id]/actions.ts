@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, NO_PERMISSION, requireAdmin } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getCatalog, type Capability, type CapabilityValue } from "@/lib/data/catalog";
@@ -17,7 +17,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * El service role solo se usa para leer el estado actual.
  */
 function friendlyError(error: { code?: string; message: string }): string {
-  if (error.code === "42501") return "Tu usuario no es admin de plataforma en la base de datos.";
+  if (error.code === "42501") return NO_PERMISSION;
   if (error.code === "PGRST202" || /could not find the function/i.test(error.message)) {
     return "Falta aplicar la migración 20260928120000_clear_event_capability_override.sql en Supabase.";
   }
@@ -78,17 +78,17 @@ function parseValue(capability: Capability, raw: string): CapabilityValue | null
 }
 
 /**
- * superOnly: aplicar un plan completo o dar acceso total regala funciones de
- * pago enteras; eso queda para superadmin. Las RPCs de permisos son por
- * capability y no distinguen el rol, así que esta regla vive solo aquí.
+ * Editar permisos sueltos exige eventos.permisos (la RPC lo vuelve a validar).
+ * wholePlan: aplicar un plan completo o dar acceso total regala funciones de
+ * pago enteras; además exige eventos.asignar_plan.
  */
 async function guard(
   eventId: string,
   reason: string,
-  superOnly = false
+  wholePlan = false
 ): Promise<{ error: string } | { reason: string }> {
   const admin = await requireAdmin();
-  if (superOnly && !admin.isSuperAdmin) return { error: "Solo un superadmin puede hacer esto." };
+  if (!can(admin, "eventos.permisos") || (wholePlan && !can(admin, "eventos.asignar_plan"))) return { error: NO_PERMISSION };
   if (!UUID.test(eventId)) return { error: "Evento no válido." };
   const cleanReason = validReason(reason);
   if (!cleanReason) return { error: "Escribe un motivo (mínimo 3 caracteres): queda en la auditoría." };

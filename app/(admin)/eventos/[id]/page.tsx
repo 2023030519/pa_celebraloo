@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, requirePermission } from "@/lib/auth/require-admin";
 import { getEventDetail } from "@/lib/data/events";
 import { formatMxn, formatValue, getCatalog, type CapabilityValue } from "@/lib/data/catalog";
 import { Badge, Card, PageTitle, Table, formatDate } from "@/components/ui";
@@ -16,7 +16,7 @@ function rawValue(value: CapabilityValue): string {
 }
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("eventos.read");
   const { id } = await params;
   const [event, catalog] = await Promise.all([getEventDetail(id), getCatalog()]);
   if (!event) notFound();
@@ -65,13 +65,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         }
       />
 
-      {admin.isSuperAdmin && <EventOverview eventId={event.id} />}
+      <EventOverview eventId={event.id} />
 
       <div className="mb-6 grid gap-3 md:grid-cols-3">
         <Card>
           <p className="text-xs font-semibold text-ink-600">Dueño</p>
           {event.owner.email ? (
-            <Link href={`/usuarios/${event.owner.id}`} className="mt-1 block truncate font-medium hover:underline">
+            <Link href={`/clientes/${event.owner.id}`} className="mt-1 block truncate font-medium hover:underline">
               {event.owner.email}
             </Link>
           ) : (
@@ -84,7 +84,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             {event.members.length === 0 && <li className="text-ink-600">Sin miembros</li>}
             {event.members.map((member) => (
               <li key={member.profileId} className="flex items-center justify-between gap-2">
-                <Link href={`/usuarios/${member.profileId}`} className="truncate hover:underline">
+                <Link href={`/clientes/${member.profileId}`} className="truncate hover:underline">
                   {member.email || member.profileId}
                 </Link>
                 <Badge>{member.role}</Badge>
@@ -99,28 +99,34 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         </Card>
       </div>
 
-      <h2 className="mb-1 text-[15px] font-semibold">Permisos y complementos</h2>
-      <p className="mb-3 text-ink-600">
-        Cada cambio se guarda como override de admin con tu nombre y el motivo. “Quitar” revoca el override: si el evento
-        lo compró, vuelve a lo comprado; si no, se apaga.
-      </p>
-      <PermissionsEditor
-        isSuperAdmin={admin.isSuperAdmin}
-        eventId={event.id}
-        capabilities={capabilities}
-        plans={catalog.plans.map(toOption)}
-        addons={catalog.addons.map(toOption)}
-      />
-
-      {admin.isSuperAdmin && (
+      {can(admin, "eventos.permisos") && (
         <>
-          <h2 className="mb-1 mt-8 text-[15px] font-semibold">Superadmin</h2>
+          <h2 className="mb-1 text-[15px] font-semibold">Permisos y complementos</h2>
+          <p className="mb-3 text-ink-600">
+            Cada cambio se guarda como override de admin con tu nombre y el motivo. “Quitar” revoca el override: si el
+            evento lo compró, vuelve a lo comprado; si no, se apaga.
+          </p>
+          <PermissionsEditor
+            canAssignPlan={can(admin, "eventos.asignar_plan")}
+            eventId={event.id}
+            capabilities={capabilities}
+            plans={catalog.plans.map(toOption)}
+            addons={catalog.addons.map(toOption)}
+          />
+        </>
+      )}
+
+      {(can(admin, "eventos.desbloquear") || can(admin, "eventos.borrar")) && (
+        <>
+          <h2 className="mb-1 mt-8 text-[15px] font-semibold">Excepciones y borrado</h2>
           <p className="mb-3 text-ink-600">Excepciones al bloqueo de edición y borrado permanente del evento.</p>
           <EventSuperTools
             eventId={event.id}
             eventName={event.name}
             locked={isEditLocked(event.eventDate, event.createdAt, event.editUnlockedUntil)}
             activeUnlock={activeUnlock(event.editUnlockedUntil)}
+            canUnlock={can(admin, "eventos.desbloquear")}
+            canDelete={can(admin, "eventos.borrar")}
           />
         </>
       )}

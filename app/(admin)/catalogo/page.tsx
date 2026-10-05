@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { can, requirePermission } from "@/lib/auth/require-admin";
 import { formatMxn, getCatalog, type CatalogItem } from "@/lib/data/catalog";
 import { CatalogRowEditor } from "@/components/catalog-row-editor";
 import { CatalogOverview } from "@/components/catalog-overview";
@@ -19,9 +19,11 @@ function ReadOnlyRows({ items }: { items: CatalogItem[] }) {
 }
 
 export default async function CatalogPage() {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("planes.read");
   const catalog = await getCatalog();
-  const editable = admin.isSuperAdmin;
+  const editable = can(admin, "planes.write");
+  // Ventas e ingresos por producto: quien ve montos de ventas.
+  const showOverview = can(admin, "ventas.financiero");
   const head = ["Nombre", "Precio (MXN)", "Estado", editable ? "Guardar" : "Incluye"];
 
   const rows = (kind: "plan" | "addon", items: CatalogItem[]) =>
@@ -47,11 +49,11 @@ export default async function CatalogPage() {
         subtitle={
           editable
             ? "Resumen comercial y, abajo, edición. Los cambios aplican desde el siguiente pago; lo ya comprado no cambia."
-            : "Solo lectura: editar el catálogo es de superadmin."
+            : "Solo lectura: editar planes y precios es de superadmin."
         }
       />
 
-      {editable && <CatalogOverview catalog={catalog} />}
+      {showOverview && <CatalogOverview catalog={catalog} />}
 
       {editable && <h2 className="mb-3 border-t border-ink-150 pt-6 text-[15px] font-semibold">Editar catálogo</h2>}
       <h2 className="mb-2 text-[15px] font-semibold">Paquetes</h2>

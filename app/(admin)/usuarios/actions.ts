@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { requireAdmin, type AdminSession } from "@/lib/auth/require-admin";
+import { can, NO_PERMISSION, requireAdmin, type AdminSession } from "@/lib/auth/require-admin";
+import { isAdminRole, type AdminRole } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -45,9 +46,12 @@ async function targetInfo(userId: string) {
   const service = createServiceRoleClient();
   const [{ data: auth }, { data: staff, error: staffError }] = await Promise.all([
     service.auth.admin.getUserById(userId),
-    service.from("celebraloo_staff").select("is_platform_admin").eq("profile_id", userId).maybeSingle(),
+    service.from("celebraloo_staff").select("is_platform_admin, admin_role").eq("profile_id", userId).maybeSingle(),
   ]);
-  return { email: auth?.user?.email ?? "", isPlatformAdmin: staff?.is_platform_admin === true, staffError };
+  // Cualquier rol de panel cuenta como staff con acceso (admin_role); antes
+  // de la migración de roles, is_platform_admin.
+  const hasPanelRole = Boolean(staff?.admin_role) || staff?.is_platform_admin === true;
+  return { email: auth?.user?.email ?? "", hasPanelRole, staffError };
 }
 
 /**
@@ -58,13 +62,14 @@ async function targetInfo(userId: string) {
  */
 export async function setAccountDisabled(userId: string, disabled: boolean): Promise<ActionResult> {
   const admin = await requireAdmin();
+  if (!can(admin, "clientes.suspender")) return { ok: false, message: NO_PERMISSION };
   if (!UUID.test(userId)) return { ok: false, message: "Usuario no válido." };
   if (userId === admin.userId) return { ok: false, message: "No puedes deshabilitar tu propia cuenta." };
 
   const target = await targetInfo(userId);
   if (target.staffError) return { ok: false, message: target.staffError.message };
-  if (disabled && target.isPlatformAdmin) {
-    return { ok: false, message: "No se puede deshabilitar a otro admin de plataforma. Quítale el permiso primero." };
+  if (disabled && target.hasPanelRole) {
+    return { ok: false, message: "No se puede deshabilitar a alguien con rol en el panel. Quítale el rol primero." };
   }
 
   const { error } = await createServiceRoleClient().auth.admin.updateUserById(userId, {
@@ -82,48 +87,46 @@ export async function setAccountDisabled(userId: string, disabled: boolean): Pro
   return { ok: true, message: disabled ? "Cuenta deshabilitada." : "Cuenta habilitada." };
 }
 
-export type AdminRole = "superadmin" | "admin" | "none";
-
 function roleError(error: { code?: string; message: string }): string {
-  if (error.code === "42501") return "Solo un superadmin puede cambiar roles.";
+  if (error.code === "42501") return NO_PERMISSION;
   if (error.code === "55000") return "Debe quedar al menos un superadmin.";
-  if (error.code === "P0002") return "Usuario no encontrado.";
-  if (error.code === "22023") return "Rol no válido. ¿Falta aplicar la migración 20260929160000_super_admin_tools.sql?";
-  if (missingMigration(error)) return "Falta aplicar la migración 20260929140000_platform_super_admin.sql en Supabase.";
+  if (error.code === "P0002") return "Usuario no encontrado (necesita haber terminado su registro en Celebraloo).";
+  if (error.code === "22023") return "Rol no válido o falta el motivo.";
+  if (missingMigration(error)) return "Falta aplicar la migración 20261005100000_admin_roles_permissions.sql en Supabase.";
   return error.message;
 }
 
 /**
- * Rol del panel: ninguno, admin o superadmin. Va por RPC con la sesión del
- * superadmin: la BD valida el rol, que quede al menos un superadmin, y lo
- * registra en Actividad.
+ * Rol del panel (o null = sin acceso). Va por RPC con la sesión de quien lo
+ * cambia: la BD valida roles.write, que quede al menos un superadmin, y lo
+ * registra con el motivo en Actividad.
  */
-export async function setAdminRole(userId: string, role: AdminRole): Promise<ActionResult> {
+export async function setStaffRole(userId: string, role: AdminRole | null, reason: string): Promise<ActionResult> {
   const admin = await requireAdmin();
-  if (!admin.isSuperAdmin) return { ok: false, message: "Solo un superadmin puede cambiar roles." };
+  if (!can(admin, "roles.write")) return { ok: false, message: NO_PERMISSION };
   if (!UUID.test(userId)) return { ok: false, message: "Usuario no válido." };
-  if (role !== "superadmin" && role !== "admin" && role !== "none") return { ok: false, message: "Rol no válido." };
+  if (role !== null && !isAdminRole(role)) return { ok: false, message: "Rol no válido." };
+  if (reason.trim().length < 3) return { ok: false, message: "Escribe un motivo (mínimo 3 caracteres)." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("set_platform_admin_role", { p_profile_id: userId, p_role: role });
+  const { error } = await supabase.rpc("set_staff_role", { p_profile_id: userId, p_role: role, p_reason: reason.trim() });
   if (error) return { ok: false, message: roleError(error) };
 
   refresh();
-  const label = { superadmin: "Ahora es superadmin.", admin: "Ahora es admin.", none: "Ya no tiene acceso al panel." };
-  return { ok: true, message: label[role] };
+  return { ok: true, message: role ? "Rol actualizado." : "Ya no tiene acceso al panel." };
 }
 
 /** Devuelve el recorrido gratuito a un correo (borra su registro en free_plan_claims). */
 export async function resetFreePlan(email: string, reason: string): Promise<ActionResult> {
   const admin = await requireAdmin();
-  if (!admin.isSuperAdmin) return { ok: false, message: "Solo un superadmin puede hacer esto." };
+  if (!can(admin, "clientes.plan_gratis")) return { ok: false, message: NO_PERMISSION };
   if (!email.includes("@")) return { ok: false, message: "Correo no válido." };
   if (reason.trim().length < 3) return { ok: false, message: "Escribe un motivo (mínimo 3 caracteres)." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("reset_free_plan", { p_email: email, p_reason: reason.trim() });
   if (error) {
-    if (error.code === "42501") return { ok: false, message: "Solo un superadmin puede hacer esto." };
+    if (error.code === "42501") return { ok: false, message: NO_PERMISSION };
     if (missingMigration(error)) return { ok: false, message: "Falta aplicar la migración 20260929160000_super_admin_tools.sql en Supabase." };
     return { ok: false, message: error.message };
   }
@@ -141,7 +144,7 @@ export async function resetFreePlan(email: string, reason: string): Promise<Acti
  */
 export async function deleteAccount(userId: string, confirmEmail: string, reason: string): Promise<ActionResult> {
   const admin = await requireAdmin();
-  if (!admin.isSuperAdmin) return { ok: false, message: "Solo un superadmin puede borrar cuentas." };
+  if (!can(admin, "clientes.borrar")) return { ok: false, message: NO_PERMISSION };
   if (!UUID.test(userId)) return { ok: false, message: "Usuario no válido." };
   if (userId === admin.userId) return { ok: false, message: "No puedes borrar tu propia cuenta." };
   if (reason.trim().length < 3) return { ok: false, message: "Escribe un motivo (mínimo 3 caracteres)." };
@@ -151,7 +154,7 @@ export async function deleteAccount(userId: string, confirmEmail: string, reason
   if (confirmEmail.trim().toLowerCase() !== target.email.toLowerCase()) {
     return { ok: false, message: "El correo no coincide. Escríbelo exactamente igual." };
   }
-  if (target.isPlatformAdmin) return { ok: false, message: "Quítale primero el rol de admin." };
+  if (target.hasPanelRole) return { ok: false, message: "Quítale primero el rol del panel." };
 
   const service = createServiceRoleClient();
   const { data: owned, error: ownedError } = await service

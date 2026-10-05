@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { getFinanceSummary } from "@/lib/data/admin";
 import { EXPENSE_CATEGORIES, formatDay, formatMxn, monthLabel, monthOrCurrent, monthRange, shiftMonth } from "@/lib/format";
@@ -12,7 +12,7 @@ import { DeleteExpenseButton } from "@/components/delete-expense-button";
 type Search = { mes?: string; categoria?: string };
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireSuperAdmin();
+  await requirePermission("gastos.read");
   const params = await searchParams;
   const month = monthOrCurrent(params.mes);
   const range = monthRange(month);

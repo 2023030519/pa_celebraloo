@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireSuperAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-admin";
 import { listCustomers } from "@/lib/data/admin";
 import { getCatalog } from "@/lib/data/catalog";
 import { formatMxn } from "@/lib/format";
@@ -18,7 +18,7 @@ const FILTERS: Record<string, string> = {
 type Search = { q?: string; filtro?: string; pagina?: string };
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireSuperAdmin();
+  await requirePermission("clientes.read");
   const params = await searchParams;
   const filter = params.filtro && params.filtro in FILTERS ? params.filtro : null;
   const page = pageFrom(params.pagina);
