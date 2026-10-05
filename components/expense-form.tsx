@@ -101,7 +101,8 @@ export function ExpenseForm({ id, initial }: { id: string | null; initial: Expen
       </div>
       {values.periodicity !== "unico" && (
         <p className="text-xs text-ink-600 sm:col-span-2">
-          Periodicidad es informativa: un gasto mensual se registra cada mes que se paga, para que Finanzas lo cuente en su fecha.
+          Periodicidad es informativa. Para que un gasto mensual o anual se registre solo cada vez que se cobra, dalo de alta en
+          Suscripciones y servicios.
         </p>
       )}
     </form>

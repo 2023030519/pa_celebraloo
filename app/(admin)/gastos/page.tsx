@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Repeat } from "lucide-react";
 import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { getFinanceSummary } from "@/lib/data/admin";
@@ -21,7 +21,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   let query = supabase
     .from("admin_expenses")
-    .select("id, expense_date, concept, category, vendor, subtotal_cents, tax_cents, total_cents, expense_type, periodicity, payment_method")
+    .select("id, expense_date, concept, category, vendor, subtotal_cents, tax_cents, total_cents, expense_type, periodicity, payment_method, recurring_expense_id")
     .gte("expense_date", range.from)
     .lt("expense_date", range.to)
     .order("expense_date", { ascending: false })
@@ -41,14 +41,22 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     <>
       <PageTitle
         title="Gastos"
-        subtitle="Gastos de Celebraloo registrados a mano. Cuentan en Finanzas por su fecha."
+        subtitle="Gastos de Celebraloo. Cuentan en Finanzas por su fecha. Los que se repiten se registran solos desde Suscripciones y servicios."
         actions={
-          <Link
-            href="/gastos/nuevo"
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink-950 px-4 font-semibold text-surface hover:bg-ink-800"
-          >
-            <Plus size={16} aria-hidden="true" /> Registrar gasto
-          </Link>
+          <span className="flex flex-wrap gap-2">
+            <Link
+              href="/gastos/suscripciones"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-ink-250 bg-surface px-4 font-semibold text-ink-800 hover:bg-paper"
+            >
+              <Repeat size={16} aria-hidden="true" /> Suscripciones y servicios
+            </Link>
+            <Link
+              href="/gastos/nuevo"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink-950 px-4 font-semibold text-surface hover:bg-ink-800"
+            >
+              <Plus size={16} aria-hidden="true" /> Registrar gasto
+            </Link>
+          </span>
         }
       />
 
@@ -96,6 +104,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                 {expense.concept}
               </Link>
               {expense.payment_method && <p className="text-xs text-ink-600">{expense.payment_method}</p>}
+              {expense.recurring_expense_id && (
+                <Link href="/gastos/suscripciones" className="mt-0.5 inline-block">
+                  <Badge tone="info">Recurrente</Badge>
+                </Link>
+              )}
             </td>
             <td className="px-3 py-2.5">
               {expense.category === "retiro" ? <Badge tone="info">Retiro</Badge> : EXPENSE_CATEGORIES[expense.category]?.split(" (")[0]}
