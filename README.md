@@ -27,7 +27,8 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
      `20261005100000_admin_roles_permissions.sql`,
      `20261005110000_profile_acquisition_last_seen.sql`,
      `20261005120000_admin_definitions.sql` y
-     `20261005130000_admin_alerts.sql`. Aplícalas ANTES de desplegar el panel
+     `20261005130000_admin_alerts.sql` y
+     `20261005140000_admin_inicio_alertas_venta.sql`. Aplícalas ANTES de desplegar el panel
      V2. Sin ellas el panel funciona en modo de respaldo: solo entra el
      superadmin de siempre.
 3. **Tu usuario admin:** ejecuta `supabase/crear-admin.sql` con tu correo.
