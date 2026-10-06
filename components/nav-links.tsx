@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
+  ChartLine,
   Bell,
   CalendarHeart,
   FileSpreadsheet,
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { href: "/catalogo", label: "Planes", icon: Tags },
   { href: "/promociones", label: "Promociones", icon: TicketPercent },
   { href: "/reportes", label: "Reportes", icon: FileSpreadsheet },
+  { href: "/metricas", label: "Métricas", icon: ChartLine },
   { href: "/actividad", label: "Actividad", icon: History },
   { href: "/configuracion", label: "Configuración", icon: Settings },
   { href: "/usuarios", label: "Cuentas y roles", icon: ShieldCheck },

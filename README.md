@@ -30,7 +30,8 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
      `20261005130000_admin_alerts.sql` y
      `20261005140000_admin_inicio_alertas_venta.sql` y
      `20261005150000_admin_clientes_gastos.sql` (habilita pg_cron) y
-     `20261005160000_admin_promociones.sql`. Aplícalas ANTES de desplegar el panel
+     `20261005160000_admin_promociones.sql` y
+     `20261006100000_admin_reportes_metricas.sql`. Aplícalas ANTES de desplegar el panel
      V2. Sin ellas el panel funciona en modo de respaldo: solo entra el
      superadmin de siempre.
 3. **Tu usuario admin:** ejecuta `supabase/crear-admin.sql` con tu correo.

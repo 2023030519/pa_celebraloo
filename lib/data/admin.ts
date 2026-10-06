@@ -411,8 +411,11 @@ export async function getCatalogOverview(): Promise<CatalogOverviewRow[]> {
 export type MonthlyReportRow = {
   month: string;
   ventas_brutas_cents: number;
-  numero_ventas: number;
+  transacciones: number;
+  ticket_promedio_cents: number | null;
   dinero_recibido_cents: number;
+  /** Variación del dinero recibido contra el mes anterior (mes en curso: mismos días). */
+  variacion_ingresos_bps: number | null;
   iva_cobrado_cents: number;
   comisiones_stripe_cents: number;
   ingresos_netos_cents: number;
@@ -420,7 +423,10 @@ export type MonthlyReportRow = {
   resultado_operativo_cents: number;
   clientes_nuevos: number;
   clientes_de_pago_nuevos: number;
+  conversion_bps: number | null;
   eventos_creados: number;
+  ventas_con_descuento: number;
+  descuentos_cents: number;
   plan_mas_comprado: string | null;
   complemento_mas_comprado: string | null;
 };
@@ -554,4 +560,52 @@ export type PromotionRow = {
 
 export async function listPromotions(): Promise<PromotionRow[]> {
   return rpc<PromotionRow[]>("admin_promotions_list", {});
+}
+
+// ---------------------------------------------------------------------------
+// Reportes y métricas (migración 20261006100000)
+// ---------------------------------------------------------------------------
+
+export type ReportSummary = {
+  ingresos_cents: number;
+  resultado_operativo_cents: number;
+  clientes_de_pago_nuevos: number;
+  ticket_promedio_cents: number | null;
+  transacciones: number;
+  ventas_con_descuento: number;
+  descuentos_cents: number;
+};
+
+export async function getReportSummary(from: string, to: string): Promise<ReportSummary> {
+  const rows = await rpc<ReportSummary[]>("admin_report_summary", { p_from: from, p_to: to });
+  return rows[0];
+}
+
+export type FunnelStep = "registro" | "evento" | "compra" | "publicada";
+
+export type Metrics = {
+  period: { from: string; to: string };
+  adquisicion: { usuarios_registrados: number; clientes_nuevos: number; fuentes: { canal: string; usuarios: number }[] };
+  activacion: { registrados: number; crean_evento: number; publican_invitacion: number; agregan_invitados: number };
+  monetizacion: {
+    conversion_bps: number | null;
+    registrados_que_compraron: number;
+    transacciones: number;
+    ingresos_cents: number;
+    ticket_promedio_cents: number | null;
+    ventas_con_descuento: number;
+    descuentos_cents: number;
+    productos: { tipo: "plan" | "addon"; clave: string; nombre: string; ventas: number; porcentaje_bps: number; ventas_brutas_cents: number }[];
+  };
+  uso: {
+    eventos_activos: number;
+    eventos_proximos: number;
+    usuarios_activos_30d: number;
+    ultima_actividad: { menos_7_dias: number; de_7_a_30_dias: number; de_30_a_90_dias: number; mas_de_90_dias: number; nunca: number };
+  };
+  funnel: { paso: FunnelStep; usuarios: number }[];
+};
+
+export async function getMetrics(from: string, to: string): Promise<Metrics> {
+  return rpc<Metrics>("admin_metrics", { p_from: from, p_to: to });
 }

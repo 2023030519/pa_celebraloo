@@ -76,6 +76,7 @@ export const AREA_PERMISSIONS: { prefix: string; anyOf: Permission[] }[] = [
   { prefix: "/catalogo", anyOf: ["planes.read"] },
   { prefix: "/promociones", anyOf: ["promociones.read"] },
   { prefix: "/reportes", anyOf: ["reportes.read"] },
+  { prefix: "/metricas", anyOf: ["metricas.read"] },
   { prefix: "/actividad", anyOf: ["actividad.read"] },
   { prefix: "/configuracion", anyOf: ["config.write"] },
   // Cuentas y roles; también la usa quien puede suspender cuentas.
