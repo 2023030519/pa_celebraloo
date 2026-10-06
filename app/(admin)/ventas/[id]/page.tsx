@@ -124,6 +124,14 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
 
         <Card title="Dinero">
           <dl>
+            {detail.discount && (
+              <>
+                <Row label="Precio de lista">{formatMxn(detail.discount.list_amount_cents)}</Row>
+                <Row label={`Descuento${detail.discount.promotion_code ? ` (${detail.discount.promotion_code})` : ""}`}>
+                  −{formatMxn(detail.discount.discount_cents)}
+                </Row>
+              </>
+            )}
             {fin && <Row label="Subtotal">{formatMxn(sale.subtotal_cents)}</Row>}
             {fin && (
               <Row label={`IVA${sale.tax_rate_bps != null ? ` (${sale.tax_rate_bps / 100}%)` : ""}`}>{formatMxn(sale.tax_cents)}</Row>

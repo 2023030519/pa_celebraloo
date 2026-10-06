@@ -43,7 +43,8 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const pathname = request.nextUrl.pathname;
-  const isPublic = pathname === "/login" || pathname.startsWith("/auth/");
+  // /api/cron: sin sesión; la ruta exige CRON_SECRET.
+  const isPublic = pathname === "/login" || pathname.startsWith("/auth/") || pathname.startsWith("/api/cron/");
 
   if (!data?.claims && !isPublic) {
     const url = request.nextUrl.clone();

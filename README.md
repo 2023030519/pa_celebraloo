@@ -29,7 +29,8 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
      `20261005120000_admin_definitions.sql` y
      `20261005130000_admin_alerts.sql` y
      `20261005140000_admin_inicio_alertas_venta.sql` y
-     `20261005150000_admin_clientes_gastos.sql` (habilita pg_cron). Aplícalas ANTES de desplegar el panel
+     `20261005150000_admin_clientes_gastos.sql` (habilita pg_cron) y
+     `20261005160000_admin_promociones.sql`. Aplícalas ANTES de desplegar el panel
      V2. Sin ellas el panel funciona en modo de respaldo: solo entra el
      superadmin de siempre.
 3. **Tu usuario admin:** ejecuta `supabase/crear-admin.sql` con tu correo.
@@ -61,6 +62,23 @@ complementos de cada evento. Usa el mismo proyecto de Supabase que Celebraloo.
 - Los cambios de permisos de un evento van por RPC con la sesión de quien los
   hace (`set_event_capability_override`, `clear_event_capability_override`,
   permiso `eventos.permisos`) y quedan en `event_entitlement_grants`.
+
+## Promociones (Stripe)
+
+- Stripe es la fuente de verdad. Crear o editar una promoción en el panel crea
+  el Coupon y el Promotion Code en Stripe (applies_to = Products de los planes
+  y complementos elegidos, max_redemptions, expires_at) y guarda una copia con
+  sus ids. Un Coupon de Stripe no se puede editar: cambiar el descuento, los
+  productos, el máximo o la vigencia crea uno nuevo con el mismo código y
+  desactiva el anterior (los usos se acumulan).
+- "Inicio" no existe en Stripe: el código se crea inactivo y se activa al abrir
+  Promociones o con la tarea `/api/cron/promociones` (cada hora en
+  `vercel.json`, protegida con `CRON_SECRET`).
+- Llave: `STRIPE_SECRET_KEY` solo en el servidor del panel, de preferencia una
+  restricted key con escritura en Coupons, Promotion codes y Products.
+- En Celebraloo, el checkout liga cada precio a su Product y permite códigos
+  (`allow_promotion_codes`); el webhook valida subtotal − descuento = total y
+  guarda en la compra lo cobrado, el precio de lista, el descuento y el código.
 
 ## Qué hace cada acción
 

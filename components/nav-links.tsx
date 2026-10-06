@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Tags,
+  TicketPercent,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
   { href: "/clientes", label: "Clientes", icon: UserRound },
   { href: "/eventos", label: "Eventos", icon: CalendarHeart },
   { href: "/catalogo", label: "Planes", icon: Tags },
+  { href: "/promociones", label: "Promociones", icon: TicketPercent },
   { href: "/reportes", label: "Reportes", icon: FileSpreadsheet },
   { href: "/actividad", label: "Actividad", icon: History },
   { href: "/configuracion", label: "Configuración", icon: Settings },

@@ -148,6 +148,14 @@ export type SaleDetail = {
   customer_id?: string | null;
   customer_name: string | null;
   refund_summary?: { refunded_cents: number; last_refund_at: string | null; kind: "total" | "parcial" } | null;
+  /** Descuento de un cupón (migración 20261005160000). total cobrado = precio de lista − descuento. */
+  discount?: {
+    list_amount_cents: number;
+    discount_cents: number;
+    promotion_code: string | null;
+    promotion_id: string | null;
+    promotion_name: string | null;
+  } | null;
   event_name: string | null;
   refunds: { id: string; amount_cents: number; tax_cents: number; status: string; reason: string | null; stripe_created_at: string }[];
   disputes: { id: string; amount_cents: number; fee_cents: number; status: string; reason: string | null; stripe_created_at: string; closed_at: string | null }[];
@@ -509,4 +517,41 @@ export type AlertCount = { kind: string; severity: AlertSeverity; total: number 
 
 export async function getAlertCounts(): Promise<AlertCount[]> {
   return rpc<AlertCount[]>("admin_alert_counts", {});
+}
+
+// ---------------------------------------------------------------------------
+// Promociones (migración 20261005160000)
+// ---------------------------------------------------------------------------
+
+export type PromotionKind = "cupon" | "descuento" | "lanzamiento";
+export type PromotionStatus = "activa" | "programada" | "vencida" | "agotada" | "inactiva";
+
+export type PromotionRow = {
+  id: string;
+  kind: PromotionKind;
+  name: string;
+  code: string;
+  discount_type: "percent" | "amount";
+  percent_off: number | null;
+  amount_off_cents: number | null;
+  starts_at: string;
+  expires_at: string | null;
+  max_redemptions: number | null;
+  times_redeemed: number;
+  times_redeemed_synced_at: string | null;
+  applies_to_plans: string[];
+  applies_to_addons: string[];
+  is_active: boolean;
+  stripe_active: boolean;
+  stripe_coupon_id: string | null;
+  stripe_promotion_code_id: string | null;
+  status: PromotionStatus;
+  /** Ventas pagadas con esta promoción, descuento total y lo cobrado. */
+  ventas: number;
+  descuento_total_cents: number;
+  cobrado_cents: number;
+};
+
+export async function listPromotions(): Promise<PromotionRow[]> {
+  return rpc<PromotionRow[]>("admin_promotions_list", {});
 }

@@ -74,6 +74,7 @@ export const AREA_PERMISSIONS: { prefix: string; anyOf: Permission[] }[] = [
   { prefix: "/clientes", anyOf: ["clientes.read"] },
   { prefix: "/eventos", anyOf: ["eventos.read"] },
   { prefix: "/catalogo", anyOf: ["planes.read"] },
+  { prefix: "/promociones", anyOf: ["promociones.read"] },
   { prefix: "/reportes", anyOf: ["reportes.read"] },
   { prefix: "/actividad", anyOf: ["actividad.read"] },
   { prefix: "/configuracion", anyOf: ["config.write"] },
