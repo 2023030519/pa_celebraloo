@@ -8,7 +8,7 @@ export const SEVERITY_META: Record<
   { label: string; plural: string; icon: LucideIcon; text: string; bg: string; border: string }
 > = {
   rojo: { label: "Urgente", plural: "urgentes", icon: OctagonAlert, text: "text-danger-700", bg: "bg-danger-100", border: "border-danger-300" },
-  amarillo: { label: "Atención", plural: "de atención", icon: AlertTriangle, text: "text-warn-700", bg: "bg-warn-100", border: "border-warn-300" },
+  amarillo: { label: "Aviso", plural: "avisos", icon: AlertTriangle, text: "text-warn-700", bg: "bg-warn-100", border: "border-warn-300" },
   azul: { label: "Informativa", plural: "informativas", icon: Info, text: "text-info-700", bg: "bg-info-100", border: "border-info-300" },
 };
 
@@ -63,7 +63,11 @@ export function AlertList({ items, empty }: { items: AlertRow[]; empty: string }
                 <span className="sr-only">{SEVERITY_META[item.severity].label}: </span>
                 {item.title}
               </span>
-              {item.detail && <span className="block truncate text-xs text-ink-600">{item.detail}</span>}
+              {item.detail && (
+                <span className="block truncate text-xs text-ink-600" title={item.detail}>
+                  {item.detail}
+                </span>
+              )}
               <span className="block text-xs text-ink-600">{formatDate(item.occurred_at, true)}</span>
             </span>
             {href && <ChevronRight size={16} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />}
@@ -72,7 +76,7 @@ export function AlertList({ items, empty }: { items: AlertRow[]; empty: string }
         return (
           <li key={`${item.kind}-${item.target_id ?? "x"}-${index}`}>
             {href ? (
-              <Link href={href} className="-mx-2 block rounded-md px-2 hover:bg-paper">
+              <Link href={href} className="-mx-2 block rounded-md px-2 transition-colors duration-[var(--dur-fast)] hover:bg-surface-2/50">
                 {content}
               </Link>
             ) : (
@@ -96,12 +100,13 @@ export function SeverityTotals({ counts }: { counts: AlertCount[] }) {
           <li
             key={severity}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-              total > 0 ? cn(meta.bg, meta.border, meta.text) : "border-ink-150 bg-surface text-ink-600"
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
+              // R21: en cero, apagado y sin color de estado.
+              total > 0 ? cn("font-semibold", meta.bg, meta.border, meta.text) : "border-ink-150 bg-surface font-medium text-ink-400"
             )}
           >
             <meta.icon size={13} aria-hidden="true" />
-            <span className="tabular-nums">{total}</span> {meta.plural}
+            <span className="tabular-nums">{total}</span> {total === 1 ? meta.label.toLowerCase() : meta.plural}
           </li>
         );
       })}

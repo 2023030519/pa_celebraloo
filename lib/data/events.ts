@@ -12,6 +12,8 @@ export type Grant = CapabilityValue & {
   reason: string | null;
   grantedAt: string;
   grantedBy: string;
+  /** Lo dio alguien del panel (excepción, plan, complemento o acceso total), no una compra. */
+  fromPanel: boolean;
   revokedAt: string | null;
   revokedReason: string | null;
 };
@@ -28,13 +30,16 @@ export type EventDetail = {
   archived: boolean;
   /** Desbloqueo de edición puesto por un superadmin (null = sin excepción). */
   editUnlockedUntil: string | null;
-  owner: { id: string; email: string };
+  /** id null: la cuenta del dueño se borró (created_by on delete set null). */
+  owner: { id: string | null; email: string };
   members: { profileId: string; email: string; role: string }[];
   entitlements: Entitlement[];
   grants: Grant[];
   purchases: {
     id: string;
     status: string;
+    /** provider admin_panel: cortesía del panel ($0), no es venta. */
+    courtesy: boolean;
     totalCents: number | null;
     createdAt: string;
     items: { type: string; key: string | null; priceCents: number | null }[];
@@ -73,7 +78,7 @@ export async function getEventDetail(eventId: string): Promise<EventDetail | nul
       .limit(300),
     service
       .from("purchases")
-      .select("id, payment_status, amount_total_cents, created_at, purchase_items(item_type, plan_key, addon_key, unit_price_cents)")
+      .select("id, provider, payment_status, amount_total_cents, created_at, purchase_items(item_type, plan_key, addon_key, unit_price_cents)")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false }),
     service.from("celebraloo_staff").select("id, profile_id"),
@@ -97,7 +102,7 @@ export async function getEventDetail(eventId: string): Promise<EventDetail | nul
     createdAt: event.created_at,
     archived: Boolean(event.archived_at),
     editUnlockedUntil: unlock.error ? null : (unlock.data?.edit_unlocked_until ?? null),
-    owner: { id: event.created_by, email: emails.get(event.created_by) ?? "" },
+    owner: { id: event.created_by, email: event.created_by ? emails.get(event.created_by) ?? "" : "" },
     members: (members.data ?? []).map((row) => ({
       profileId: row.profile_id,
       email: emails.get(row.profile_id) ?? "",
@@ -113,13 +118,15 @@ export async function getEventDetail(eventId: string): Promise<EventDetail | nul
       source: row.source,
       reason: row.reason,
       grantedAt: row.granted_at,
-      grantedBy: row.source === "admin_override" ? staffEmail.get(row.granted_by_staff_id) ?? "staff" : "compra",
+      grantedBy: row.granted_by_staff_id ? staffEmail.get(row.granted_by_staff_id) ?? "staff" : "compra",
+      fromPanel: Boolean(row.granted_by_staff_id),
       revokedAt: row.revoked_at,
       revokedReason: row.revoked_reason,
     })),
     purchases: (purchases.data ?? []).map((row) => ({
       id: row.id,
       status: row.payment_status,
+      courtesy: row.provider === "admin_panel",
       totalCents: row.amount_total_cents,
       createdAt: row.created_at,
       items: ((row.purchase_items ?? []) as ItemJoin[]).map((item) => ({

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sin conexión · Celebraloo Admin</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: #15171c; color: #eceef2;
+         font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; padding: 24px; box-sizing: border-box; }
+  main { max-width: 340px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 0 0 20px; color: #a3a9b5; }
+  button { height: 48px; width: 100%; border: 0; border-radius: 8px; background: #d4b578; color: #15171c; font: inherit; font-weight: 600; }
+</style>
+<main>
+  <h1>No se pudo abrir el panel</h1>
+  <p>Revisa tu conexión a internet. Si el panel está en tu laptop, tiene que estar encendido y en la misma WiFi.</p>
+  <button onclick="history.length > 1 ? history.back() : location.reload()">Reintentar</button>
+</main>
+</html>

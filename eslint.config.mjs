@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Herramientas de diseño instaladas en el repo (Impeccable, bunshin): no son código del panel.
+    ".agent/**",
+    ".claude/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".bunshin/**",
+    ".impeccable/**", "apk/**",
   ]),
 ]);
 

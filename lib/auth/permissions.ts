@@ -14,11 +14,16 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
   finanzas: "Finanzas",
 };
 
+// Contra public.admin_role_permissions (revisado el 7 nov 2026).
 export const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
-  superadmin: "Todo: planes, configuración, cuentas y roles, borrados y ver como usuario.",
-  administracion: "Clientes, eventos, alertas y ventas (lectura). Asigna planes, complementos y cortesías; suspende cuentas.",
-  soporte: "Clientes, eventos y alertas en lectura. Reenvía la confirmación de correo. No ve el desglose de las ventas.",
-  finanzas: "Ventas, finanzas, gastos, reportes, métricas y promociones. Sin acciones sobre cuentas de clientes.",
+  superadmin:
+    "Todo el panel. Además de lo de los otros roles: edita planes, precios, configuración y roles; borra cuentas y eventos, desbloquea la edición de un evento, devuelve la prueba gratis y ve como usuario. En la app del cliente actúa como staff de Invitación.",
+  administracion:
+    "Inicio, alertas, clientes, eventos, ventas con su desglose, métricas, actividad y planes en lectura. Asigna planes, complementos, cortesías y permisos sueltos de un evento; suspende cuentas, reenvía la confirmación de correo y escribe notas. En la app del cliente actúa como staff de Invitación.",
+  soporte:
+    "Inicio, alertas, clientes, eventos y la lista de ventas, sin su desglose. Reenvía la confirmación de correo y escribe notas. No cambia planes ni cuentas.",
+  finanzas:
+    "Inicio, alertas, ventas con su desglose, finanzas, gastos, reportes, métricas y promociones (con edición). Lee clientes, eventos, actividad y planes, y escribe notas. Sin acciones sobre cuentas ni eventos.",
 };
 
 export const PERMISSIONS = [

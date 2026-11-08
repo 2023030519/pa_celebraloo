@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CircleSlash } from "lucide-react";
 import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput } from "@/lib/format";
-import { PageTitle } from "@/components/ui";
+import { Badge, HowCalculated, PageTitle } from "@/components/ui";
+import { SubscriptionStatusAction } from "@/components/subscription-status-action";
 import { RecurringExpenseForm } from "@/components/recurring-expense-form";
+
+export const metadata: Metadata = { title: "Suscripción" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -15,17 +20,37 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
   const supabase = await createClient();
   const { data: row } = await supabase.from("admin_recurring_expenses").select("*").eq("id", id).maybeSingle();
   if (!row) notFound();
+  const cancelled = row.status === "cancelado";
 
   return (
     <>
       <PageTitle
+        breadcrumb={[
+          { href: "/gastos", label: "Gastos" },
+          { href: "/gastos/suscripciones", label: "Suscripciones y servicios" },
+        ]}
         title={`Editar: ${row.concept}`}
         subtitle={
-          row.status === "cancelado"
-            ? "Cancelada: no genera cobros. Ajusta la próxima fecha y reactívala desde la lista."
-            : "Si cambias la próxima fecha o la periodicidad, el calendario de cobros empieza de nuevo desde esa fecha."
+          <span className="flex flex-wrap items-center gap-2">
+            {cancelled ? (
+              <Badge>
+                <CircleSlash size={12} aria-hidden="true" />
+                Cancelada
+              </Badge>
+            ) : (
+              // R22: activa es lo normal, va como texto; solo la cancelada lleva chip.
+              <span>Activa</span>
+            )}
+            {cancelled && <span>No genera cobros. Ajusta la próxima fecha y luego reactívala.</span>}
+          </span>
         }
+        actions={<SubscriptionStatusAction id={row.id} status={cancelled ? "cancelado" : "activo"} />}
       />
+      {!cancelled && (
+        <HowCalculated className="-mt-3 mb-4">
+          <p>Si cambias la próxima fecha o la periodicidad, el calendario de cobros empieza de nuevo desde esa fecha.</p>
+        </HowCalculated>
+      )}
       <RecurringExpenseForm
         id={row.id}
         initial={{

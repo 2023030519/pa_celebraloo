@@ -1,0 +1,17 @@
+{
+  "name": "celebraloo-admin-apk",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "apk": "node scripts/version.mjs && npx cap sync android && node scripts/gradle.mjs",
+    "release": "node scripts/release.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.2.3",
+    "@capacitor/core": "6.2.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.2.3"
+  }
+}

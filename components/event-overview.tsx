@@ -1,98 +1,88 @@
-import "server-only";
-import Link from "next/link";
-import { getAdminEventDetail } from "@/lib/data/admin";
-import { getCatalog } from "@/lib/data/catalog";
-import { formatDay, formatMxn } from "@/lib/format";
-import { Card, Table, formatDate } from "@/components/ui";
-import { DataError, EventStatusBadge, PaymentStatusBadge } from "@/components/finance";
-import { NotesPanel } from "@/components/notes-panel";
+import type { ReactNode } from "react";
+import { Lock, LockOpen } from "lucide-react";
+import type { AdminEventDetail } from "@/lib/data/admin";
+import type { EditLock } from "@/lib/edit-lock";
+import { formatDay, formatInt } from "@/lib/format";
+import { Card, Nil, formatDate } from "@/components/ui";
+import { Figure, FigureRow, FigureStrip } from "@/components/kpi";
 
-function Fact({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+/** Estado del candado de edición del cliente, como cifra de la franja. */
+function editFigure(lock: EditLock, activeUnlock: string | null): { value: ReactNode; hint?: string } {
+  const withIcon = (open: boolean, text: string, className?: string) => (
+    <span className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
+      {open ? <LockOpen size={16} aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
+      {text}
+    </span>
+  );
+  if (activeUnlock) return { value: withIcon(true, "Desbloqueada", "text-warn-700"), hint: `Hasta ${formatDate(activeUnlock, true)}` };
+  if (lock.error !== null) return { value: <span className="text-danger-700">No se pudo leer</span>, hint: lock.error };
+  if (lock.locked) return { value: withIcon(false, "Bloqueada"), hint: lock.lockAt ? `Desde ${formatDate(lock.lockAt, true)}` : undefined };
+  return { value: withIcon(true, "Sin bloqueo"), hint: lock.lockAt ? `Se bloquea ${formatDate(lock.lockAt, true)}` : "El evento no tiene fecha" };
+}
+
+/** Franja de la ficha (Panel V1, sección 8): el contrato (plan, invitación, edición) y la operación. Sin datos demo. */
+export function EventFigures({
+  detail,
+  planName,
+  lock,
+  activeUnlock,
+}: {
+  detail: AdminEventDetail;
+  planName: string | null;
+  lock: EditLock;
+  activeUnlock: string | null;
+}) {
+  const edit = editFigure(lock, activeUnlock);
   return (
-    <div>
-      <p className="text-xs font-semibold text-ink-600">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold tabular-nums">{value}</p>
-      {hint && <p className="text-xs text-ink-600">{hint}</p>}
+    <FigureStrip>
+      <FigureRow cols={3} label="Contrato del evento">
+        <Figure size="sm" label="Plan" value={planName && planName !== "—" ? planName : "Sin plan"} />
+        <Figure
+          size="sm"
+          label="Invitación"
+          value={detail.published ? "Publicada" : detail.invitation_status ? "Sin publicar" : "Sin iniciar"}
+        />
+        <Figure size="sm" label="Edición del cliente" value={edit.value} hint={edit.hint} />
+      </FigureRow>
+      <FigureRow cols={4} label="Operación del evento">
+        <Figure
+          size="md"
+          label="Invitados"
+          value={formatInt(detail.guests)}
+          hint={`${detail.rsvp_confirmed} confirmados · ${detail.rsvp_pending} pend. · ${detail.rsvp_declined} rechazados`}
+        />
+        <Figure size="md" label="QR generados" value={formatInt(detail.qr_generated)} />
+        <Figure size="md" label="Check-ins" value={formatInt(detail.checked_in)} />
+        <Figure size="md" label="Fotos subidas" value={formatInt(detail.photos)} hint="Álbum, visibles" />
+      </FigureRow>
+    </FigureStrip>
+  );
+}
+
+function Row({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2">
+      <dt className="text-[13px] text-ink-600">{label}</dt>
+      <dd className="text-right text-[13px] font-medium text-ink-950">
+        {children}
+        {hint && <span className="block text-xs font-normal text-ink-600">{hint}</span>}
+      </dd>
     </div>
   );
 }
 
-/** Detalle del evento del Panel V1 (sección 8). Sin datos demo. */
-export async function EventOverview({ eventId }: { eventId: string }) {
-  let detail;
-  try {
-    detail = await getAdminEventDetail(eventId);
-  } catch (error) {
-    return (
-      <div className="mb-6">
-        <DataError error={error} />
-      </div>
-    );
-  }
-  if (!detail) return null;
-  const catalog = await getCatalog();
-  const plan = detail.plan_key ? catalog.plans.find((item) => item.key === detail.plan_key)?.name ?? detail.plan_key : "—";
-
+/** Resumen lateral de la ficha: fechas y envíos. Plan, invitación y edición van en la franja; el estado, en el encabezado. */
+export function EventSummary({ detail }: { detail: AdminEventDetail }) {
   return (
-    <div className="mb-8 flex flex-col gap-4">
-      <Card
-        title={
-          <span className="flex flex-wrap items-center gap-2">
-            Resumen del evento <EventStatusBadge status={detail.status} />
-          </span>
-        }
-      >
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <Fact label="Fecha" value={formatDay(detail.event_date)} />
-          <Fact label="Plan" value={plan} />
-          <Fact
-            label="Cliente"
-            value={
-              detail.owner_id ? (
-                <Link href={`/clientes/${detail.owner_id}`} className="text-base hover:underline">
-                  {detail.owner_name ?? detail.owner_email ?? "—"}
-                </Link>
-              ) : (
-                "—"
-              )
-            }
-          />
-          <Fact label="Invitados" value={detail.guests} />
-          <Fact
-            label="Confirmados / pend. / rechazados"
-            value={`${detail.rsvp_confirmed} / ${detail.rsvp_pending} / ${detail.rsvp_declined}`}
-          />
-          <Fact label="Invitaciones enviadas" value="No disponible" hint="Hoy no se registra el envío." />
-          <Fact label="QR generados" value={detail.qr_generated} />
-          <Fact label="Check-ins" value={detail.checked_in} />
-          <Fact label="Fotos subidas" value={detail.photos} hint="Álbum, visibles" />
-          <Fact label="Invitación" value={detail.published ? "Publicada" : detail.invitation_status ? "Sin publicar" : "Sin iniciar"} />
-          <Fact label="Creado" value={<span className="text-sm">{formatDate(detail.created_at, true)}</span>} />
-          <Fact label="Última modificación" value={<span className="text-sm">{formatDate(detail.updated_at, true)}</span>} />
-        </div>
-      </Card>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-2 text-[13px] font-semibold">Ventas del evento</h2>
-          <Table head={["Fecha", "Producto", "Total", "Estado"]} empty={detail.purchases.length === 0 ? "Sin ventas." : undefined}>
-            {detail.purchases.map((purchase) => (
-              <tr key={purchase.id} className="hover:bg-paper">
-                <td className="px-3 py-2.5 whitespace-nowrap">
-                  <Link href={`/ventas/${purchase.id}`} className="hover:underline">
-                    {formatDate(purchase.sale_at, true)}
-                  </Link>
-                </td>
-                <td className="px-3 py-2.5">{purchase.item_name ?? "—"}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMxn(purchase.total_cents)}</td>
-                <td className="px-3 py-2.5">
-                  <PaymentStatusBadge status={purchase.display_status} />
-                </td>
-              </tr>
-            ))}
-          </Table>
-        </div>
-        <NotesPanel targetType="event" targetId={detail.id} />
-      </div>
-    </div>
+    <Card title="Resumen">
+      <dl className="-my-2 divide-y divide-ink-150">
+        <Row label="Fecha">{formatDay(detail.event_date)}</Row>
+        <Row label="Invitaciones enviadas" hint="Hoy no se registra el envío.">
+          <Nil label="No disponible" />
+        </Row>
+        <Row label="Creado">{formatDate(detail.created_at, true)}</Row>
+        <Row label="Última modificación">{formatDate(detail.updated_at, true)}</Row>
+      </dl>
+    </Card>
   );
 }

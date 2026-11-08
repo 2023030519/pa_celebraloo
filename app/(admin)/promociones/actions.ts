@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   createStripePromotion,
+  deleteStripeCoupon,
   ensureStripeProducts,
   renameStripeCoupon,
   setStripePromotionCodeActive,
@@ -70,6 +71,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOCAL_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /** Ciudad de México no tiene horario de verano desde 2022: UTC−6 todo el año. */
+// shortcut: offset fijo −06:00 (toMexicoCityLocal sí usa la zona IANA), cambiarlo a Intl con TIME_ZONE si CDMX vuelve a tener horario de verano.
 const fromMexicoCity = (value: string) => new Date(`${value}:00-06:00`);
 
 function parse(input: PromotionInput): Parsed | { error: string } {
@@ -90,7 +92,7 @@ function parse(input: PromotionInput): Parsed | { error: string } {
     percentOff = value;
   } else {
     amountOffCents = parsePesosToCents(input.value);
-    if (!amountOffCents) return { error: "Monto no válido. Usa pesos, p. ej. 100 o 99.50." };
+    if (!amountOffCents) return { error: "Monto no válido. Usa pesos y punto para los centavos, p. ej. 100 o 99.50." };
   }
 
   if (!LOCAL_DATETIME.test(input.startsAt)) return { error: "Elige la fecha de inicio." };
@@ -198,6 +200,13 @@ async function productIds(parsed: Parsed): Promise<string[]> {
   return [...ids.values()];
 }
 
+/** Deshace pasos en Stripe tras un fallo; si alguno no se puede deshacer lo dice en vez de callarlo. */
+async function undoInStripe(steps: (() => Promise<void>)[]): Promise<string> {
+  const failed: string[] = [];
+  for (const step of steps) await step().catch((error) => failed.push(stripeErrorMessage(error)));
+  return failed.length ? ` Tampoco se pudo deshacer en Stripe (${failed.join("; ")}): revisa el código en el dashboard de Stripe.` : "";
+}
+
 const sameArray = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
 
 /**
@@ -237,7 +246,7 @@ export async function savePromotion(id: string | null, input: PromotionInput, re
   const isActive = current?.is_active ?? true;
 
   let stripeIds: { couponId: string | null; promotionCodeId: string | null; active: boolean };
-  let createdCodeId: string | null = null;
+  let created: Awaited<ReturnType<typeof createStripePromotion>> | null = null;
   let deactivatedOld = false;
   try {
     if (structural) {
@@ -251,7 +260,7 @@ export async function savePromotion(id: string | null, input: PromotionInput, re
         await setStripePromotionCodeActive(current.stripe_promotion_code_id, false);
         deactivatedOld = true;
       }
-      const created = await createStripePromotion({
+      created = await createStripePromotion({
         name: parsed.name,
         code: parsed.code,
         discountType: parsed.discountType,
@@ -263,7 +272,6 @@ export async function savePromotion(id: string | null, input: PromotionInput, re
         productIds: products,
         promotionId: id,
       });
-      createdCodeId = created.promotionCodeId;
       stripeIds = created;
     } else {
       if (old && old.name !== parsed.name && current?.stripe_coupon_id) await renameStripeCoupon(current.stripe_coupon_id, parsed.name);
@@ -274,10 +282,9 @@ export async function savePromotion(id: string | null, input: PromotionInput, re
       stripeIds = { couponId: current!.stripe_coupon_id, promotionCodeId: current!.stripe_promotion_code_id, active: shouldBeActive };
     }
   } catch (error) {
-    if (deactivatedOld && current?.stripe_promotion_code_id) {
-      await setStripePromotionCodeActive(current.stripe_promotion_code_id, true).catch(() => undefined);
-    }
-    return { ok: false, message: stripeErrorMessage(error) };
+    const oldCodeId = current?.stripe_promotion_code_id;
+    const undo = await undoInStripe(deactivatedOld && oldCodeId ? [() => setStripePromotionCodeActive(oldCodeId, true)] : []);
+    return { ok: false, message: stripeErrorMessage(error) + undo };
   }
 
   const { error } = await supabase.rpc("admin_save_promotion", {
@@ -286,11 +293,15 @@ export async function savePromotion(id: string | null, input: PromotionInput, re
     p_reason: why,
   });
   if (error) {
-    if (createdCodeId) await setStripePromotionCodeActive(createdCodeId, false).catch(() => undefined);
-    if (deactivatedOld && current?.stripe_promotion_code_id) {
-      await setStripePromotionCodeActive(current.stripe_promotion_code_id, true).catch(() => undefined);
-    }
-    return { ok: false, message: rpcError(error) };
+    // Sin fila no debe quedar nada usable en Stripe: se apaga el código nuevo, se borra su cupón y vuelve el anterior.
+    // Si el proceso muere antes de llegar aquí, el cron apaga el código huérfano (deactivateOrphanPromotionCodes).
+    const oldCodeId = current?.stripe_promotion_code_id;
+    const made = created;
+    const undo = await undoInStripe([
+      ...(made ? [() => setStripePromotionCodeActive(made.promotionCodeId, false), () => deleteStripeCoupon(made.couponId)] : []),
+      ...(deactivatedOld && oldCodeId ? [() => setStripePromotionCodeActive(oldCodeId, true)] : []),
+    ]);
+    return { ok: false, message: rpcError(error) + undo };
   }
   redirect("/promociones");
 }
@@ -311,10 +322,10 @@ export async function setPromotionActive(id: string, active: boolean, reason: st
 
   const parsed = fromStored(row);
   const stripeActive = active && parsed.startsAt <= new Date();
+  const codeId = row.stripe_promotion_code_id;
+  const changeStripe = codeId !== null && stripeActive !== row.stripe_active;
   try {
-    if (row.stripe_promotion_code_id && stripeActive !== row.stripe_active) {
-      await setStripePromotionCodeActive(row.stripe_promotion_code_id, stripeActive);
-    }
+    if (changeStripe) await setStripePromotionCodeActive(codeId, stripeActive);
   } catch (error) {
     return { ok: false, message: stripeErrorMessage(error) };
   }
@@ -324,7 +335,11 @@ export async function setPromotionActive(id: string, active: boolean, reason: st
     p_data: rpcPayload(parsed, { couponId: row.stripe_coupon_id, promotionCodeId: row.stripe_promotion_code_id, active: stripeActive }, active),
     p_reason: reason.trim(),
   });
-  if (error) return { ok: false, message: rpcError(error) };
+  if (error) {
+    // Stripe ya cambió: se regresa a como estaba para que coincida con la BD.
+    const undo = await undoInStripe(changeStripe ? [() => setStripePromotionCodeActive(codeId, row.stripe_active)] : []);
+    return { ok: false, message: rpcError(error) + undo };
+  }
   refresh();
   return { ok: true, message: active ? "Promoción activada." : "Promoción desactivada: el código ya no se puede usar." };
 }

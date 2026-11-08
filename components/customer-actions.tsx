@@ -1,24 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Eye, Gift, MailCheck, UserX } from "lucide-react";
 import { assignToEvent, resendConfirmation, setAccountSuspended, startViewAs, type AssignKind } from "@/app/(admin)/clientes/actions";
 import { ConfirmAction } from "@/components/confirm-action";
+import { Field } from "@/components/filters";
+import { Select, cn } from "@/components/ui";
 
 type Option = { key: string; name: string };
 
-const selectClass =
-  "h-9 w-full rounded-md border border-ink-250 bg-surface px-2.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30";
-const cardClass = "flex flex-col gap-2 rounded-xl border border-ink-150 bg-surface p-4 shadow-sm";
+// Ningún select se estira en escritorio (R7): llena la columna en móvil y se queda en max-w-sm.
+const selectClass = "w-full sm:max-w-sm";
+const checkClass = "flex min-h-6 max-md:min-h-11 items-center gap-2 text-[13px] text-ink-800";
 
-function Section({ icon: Icon, title, children }: { icon: typeof Gift; title: string; children: React.ReactNode }) {
+/** Un bloque del panel de acciones: separado por divisor, sin tarjeta propia. */
+function Item({
+  icon: Icon,
+  title,
+  id,
+  className,
+  children,
+}: {
+  icon: typeof Gift;
+  title: string;
+  id?: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <section className={cardClass}>
-      <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
-        <Icon size={14} aria-hidden="true" /> {title}
+    <div id={id} className={cn("flex flex-col gap-2.5 px-4 py-4", className)}>
+      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-ink-950">
+        <Icon size={14} aria-hidden="true" className="text-ink-600" />
+        {title}
       </h3>
       {children}
-    </section>
+    </div>
   );
 }
 
@@ -43,7 +59,7 @@ function AssignForm({
   const [courtesy, setCourtesy] = useState(!canAssign);
   const [removeOthers, setRemoveOthers] = useState(false);
 
-  if (events.length === 0) return <p className="text-xs text-ink-600">El cliente aún no tiene eventos: no hay a qué asignarle un plan.</p>;
+  if (events.length === 0) return <p className="text-[13px] text-ink-600">El cliente aún no tiene eventos: no hay a qué asignarle un plan.</p>;
 
   const itemKey = kind === "plan" ? planKey : kind === "complemento" ? addonKey : null;
   const itemName =
@@ -51,54 +67,60 @@ function AssignForm({
   const eventName = events.find((event) => event.key === eventId)?.name;
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-xs font-semibold text-ink-800">
-        Evento
-        <select value={eventId} onChange={(event) => setEventId(event.target.value)} className={selectClass}>
+    <div className="flex flex-col gap-3">
+      <Field label="Evento">
+        <Select value={eventId} onChange={(event) => setEventId(event.target.value)} className={selectClass}>
           {events.map((event) => (
             <option key={event.key} value={event.key}>
               {event.name}
             </option>
           ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-semibold text-ink-800">
-        Qué asignar
-        <select value={kind} onChange={(event) => setKind(event.target.value as AssignKind)} className={selectClass}>
+        </Select>
+      </Field>
+      <Field label="Qué asignar">
+        <Select value={kind} onChange={(event) => setKind(event.target.value as AssignKind)} className={selectClass}>
           <option value="plan">Plan</option>
           <option value="complemento">Complemento</option>
           <option value="acceso_total">Acceso total (Atelier + todos los complementos)</option>
-        </select>
-      </label>
+        </Select>
+      </Field>
       {kind === "plan" && (
-        <select aria-label="Plan" value={planKey} onChange={(event) => setPlanKey(event.target.value)} className={selectClass}>
-          {plans.map((plan) => (
-            <option key={plan.key} value={plan.key}>
-              {plan.name}
-            </option>
-          ))}
-        </select>
+        <Field label="Plan">
+          <Select value={planKey} onChange={(event) => setPlanKey(event.target.value)} className={selectClass}>
+            {plans.map((plan) => (
+              <option key={plan.key} value={plan.key}>
+                {plan.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
       )}
       {kind === "complemento" && (
-        <select aria-label="Complemento" value={addonKey} onChange={(event) => setAddonKey(event.target.value)} className={selectClass}>
-          {addons.map((addon) => (
-            <option key={addon.key} value={addon.key}>
-              {addon.name}
-            </option>
-          ))}
-        </select>
+        <Field label="Complemento">
+          <Select value={addonKey} onChange={(event) => setAddonKey(event.target.value)} className={selectClass}>
+            {addons.map((addon) => (
+              <option key={addon.key} value={addon.key}>
+                {addon.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
       )}
-      {kind === "plan" && (
-        <label className="flex items-center gap-2 text-xs text-ink-800">
-          <input type="checkbox" checked={removeOthers} onChange={(event) => setRemoveOthers(event.target.checked)} />
-          Quitar lo que el plan no incluye
-        </label>
-      )}
-      {canCourtesy && canAssign && (
-        <label className="flex items-center gap-2 text-xs text-ink-800">
-          <input type="checkbox" checked={courtesy} onChange={(event) => setCourtesy(event.target.checked)} />
-          Es cortesía
-        </label>
+      {(kind === "plan" || (canCourtesy && canAssign)) && (
+        <div className="flex flex-col gap-1">
+          {kind === "plan" && (
+            <label className={checkClass}>
+              <input type="checkbox" checked={removeOthers} onChange={(event) => setRemoveOthers(event.target.checked)} className="size-4 accent-gold-800" />
+              Quitar lo que el plan no incluye
+            </label>
+          )}
+          {canCourtesy && canAssign && (
+            <label className={checkClass}>
+              <input type="checkbox" checked={courtesy} onChange={(event) => setCourtesy(event.target.checked)} className="size-4 accent-gold-800" />
+              Es cortesía
+            </label>
+          )}
+        </div>
       )}
       <ConfirmAction
         tone="primary"
@@ -106,8 +128,8 @@ function AssignForm({
         confirmLabel={courtesy ? "Dar cortesía" : "Asignar"}
         description={
           <>
-            {courtesy ? "Cortesía" : "Asignación"}: <strong>{itemName ?? "—"}</strong> en <strong>{eventName ?? "—"}</strong>. Se
-            guarda como override de admin. No es una venta ni cuenta como ingreso.
+            {courtesy ? "Cortesía" : "Asignación"}: <strong>{itemName ?? "Sin elegir"}</strong> en <strong>{eventName ?? "Sin elegir"}</strong>. Se
+            suma igual que una compra y lo que el cliente compre después se suma encima. No es una venta ni cuenta como ingreso.
           </>
         }
         onConfirm={(reason) => assignToEvent({ eventId, kind, itemKey, courtesy, reason, removeOthers: kind === "plan" && removeOthers })}
@@ -116,81 +138,95 @@ function AssignForm({
   );
 }
 
+/**
+ * Acciones de cuenta de la ficha de cliente, en un solo panel lateral. Cada una
+ * pide motivo (ConfirmAction) y queda en Actividad. Sin permiso, no se muestra.
+ */
 export function CustomerActions({
   customer,
   events,
   plans,
   addons,
   can,
+  id,
+  className,
 }: {
+  id?: string;
+  className?: string;
   customer: { id: string; email: string; emailConfirmed: boolean; disabled: boolean; isStaff: boolean; isSelf: boolean };
   events: Option[];
   plans: Option[];
   addons: Option[];
   can: { resend: boolean; assign: boolean; courtesy: boolean; suspend: boolean; viewAs: boolean };
 }) {
-  const sections = [can.resend, can.assign || can.courtesy, can.suspend, can.viewAs].filter(Boolean).length;
-  if (sections === 0) return null;
+  if (!(can.resend || can.assign || can.courtesy || can.suspend || can.viewAs)) return null;
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {(can.assign || can.courtesy) && (
-        <Section icon={Gift} title={can.assign ? "Plan, complemento o cortesía" : "Cortesía"}>
-          <AssignForm events={events} plans={plans} addons={addons} canAssign={can.assign} canCourtesy={can.courtesy} />
-        </Section>
-      )}
+    <section id={id} aria-labelledby="customer-actions" className={cn("min-w-0 rounded-lg border border-ink-150 bg-surface", className)}>
+      <div className="border-b border-ink-150 px-4 py-3">
+        <h2 id="customer-actions" className="text-base font-semibold text-ink-950">
+          Acciones de cuenta
+        </h2>
+        <p className="mt-0.5 text-xs text-ink-600">Cada acción pide un motivo y queda en Actividad.</p>
+      </div>
+      <div className="divide-y divide-ink-150">
+        {(can.assign || can.courtesy) && (
+          <Item icon={Gift} title={can.assign ? "Plan, complemento o cortesía" : "Cortesía"}>
+            <AssignForm events={events} plans={plans} addons={addons} canAssign={can.assign} canCourtesy={can.courtesy} />
+          </Item>
+        )}
 
-      {can.resend && (
-        <Section icon={MailCheck} title="Confirmación de correo">
-          <p className="text-xs text-ink-600">
-            {customer.emailConfirmed ? "Ya confirmó su correo." : "Todavía no confirma su correo. Se le enviará de nuevo el enlace."}
-          </p>
-          <ConfirmAction
-            label="Reenviar confirmación"
-            confirmLabel="Reenviar"
-            tone="primary"
-            disabledReason={customer.emailConfirmed ? "No hace falta: ya está confirmado." : null}
-            description={<>Se enviará a {customer.email}.</>}
-            onConfirm={(reason) => resendConfirmation(customer.id, reason)}
-          />
-        </Section>
-      )}
+        {can.resend && (
+          <Item icon={MailCheck} title="Confirmación de correo">
+            <p className="text-[13px] text-ink-600">
+              {customer.emailConfirmed ? "Ya confirmó su correo." : "Todavía no confirma su correo. Se le enviará de nuevo el enlace."}
+            </p>
+            {/* Ya confirmado: el texto de arriba lo dice y el servidor rechazaría el reenvío, así que no hay botón. */}
+            {!customer.emailConfirmed && (
+              <ConfirmAction
+                label="Reenviar confirmación"
+                confirmLabel="Reenviar"
+                description={<>Se enviará a {customer.email}. Supabase puede tardar hasta 30 segundos en responder.</>}
+                pendingLabel="Enviando…"
+                onConfirm={(reason) => resendConfirmation(customer.id, reason)}
+              />
+            )}
+          </Item>
+        )}
 
-      {can.suspend && (
-        <Section icon={UserX} title={customer.disabled ? "Cuenta suspendida" : "Suspender cuenta"}>
-          <p className="text-xs text-ink-600">
-            {customer.disabled
-              ? "No puede iniciar sesión. Sus eventos e invitaciones siguen igual."
-              : "Impide iniciar sesión (una sesión abierta dura hasta 1 h). No toca sus eventos ni invitaciones."}
-          </p>
-          {customer.disabled ? (
-            <ConfirmAction label="Reactivar" confirmLabel="Reactivar cuenta" tone="ok" onConfirm={(reason) => setAccountSuspended(customer.id, false, reason)} />
-          ) : (
+        {can.viewAs && (
+          <Item icon={Eye} title="Ver como usuario" id="ver-como" className="scroll-mt-6">
+            <p className="text-[13px] text-ink-600">Vista de solo lectura de lo que el cliente ve en su cuenta. Dura 15 minutos y queda en Actividad.</p>
             <ConfirmAction
-              label="Suspender"
-              confirmLabel="Suspender cuenta"
-              tone="danger"
-              disabledReason={customer.isSelf ? "Es tu cuenta." : customer.isStaff ? "Es staff: quítale el rol primero." : null}
-              onConfirm={(reason) => setAccountSuspended(customer.id, true, reason)}
+              label="Ver como usuario"
+              confirmLabel="Abrir vista"
+              disabledReason={customer.isStaff ? "No disponible para cuentas de staff." : null}
+              onConfirm={(reason) => startViewAs(customer.id, reason)}
             />
-          )}
-        </Section>
-      )}
+          </Item>
+        )}
 
-      {can.viewAs && (
-        <Section icon={Eye} title="Ver como usuario">
-          <p className="text-xs text-ink-600">
-            Vista de solo lectura de lo que el cliente ve en su cuenta. Dura 15 minutos y queda en Actividad.
-          </p>
-          <ConfirmAction
-            label="Ver como usuario"
-            confirmLabel="Abrir vista"
-            tone="primary"
-            disabledReason={customer.isStaff ? "No disponible para cuentas de staff." : null}
-            onConfirm={(reason) => startViewAs(customer.id, reason)}
-          />
-        </Section>
-      )}
-    </div>
+        {can.suspend && (
+          <Item icon={UserX} title={customer.disabled ? "Cuenta suspendida" : "Suspender cuenta"}>
+            <p className="text-[13px] text-ink-600">
+              {customer.disabled
+                ? "No puede iniciar sesión. Sus eventos e invitaciones siguen igual."
+                : "Impide iniciar sesión (una sesión abierta dura hasta 1 h). No toca sus eventos ni invitaciones."}
+            </p>
+            {customer.disabled ? (
+              <ConfirmAction label="Reactivar" confirmLabel="Reactivar cuenta" tone="ok" onConfirm={(reason) => setAccountSuspended(customer.id, false, reason)} />
+            ) : (
+              <ConfirmAction
+                label="Suspender"
+                confirmLabel="Suspender cuenta"
+                tone="danger"
+                disabledReason={customer.isSelf ? "Es tu cuenta." : customer.isStaff ? "Es staff: quítale el rol primero." : null}
+                onConfirm={(reason) => setAccountSuspended(customer.id, true, reason)}
+              />
+            )}
+          </Item>
+        )}
+      </div>
+    </section>
   );
 }

@@ -20,6 +20,11 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
+/** Las RPCs buscan con LIKE: sin escapar, "%" o "_" empatan con todo. */
+function likeText(search: string | null): string | null {
+  return search && search.replace(/[\\%_]/g, "\\$&");
+}
+
 // Postgres devuelve bigint como número en JSON mientras quepa; los montos del
 // panel (centavos) caben de sobra en Number.MAX_SAFE_INTEGER.
 
@@ -105,7 +110,7 @@ export async function listSales(filters: SalesFilters): Promise<SaleRow[]> {
     p_to: filters.to,
     p_status: filters.status,
     p_product: filters.product,
-    p_search: filters.search,
+    p_search: likeText(filters.search),
     p_event_id: filters.eventId,
     p_limit: filters.limit,
     p_offset: filters.offset,
@@ -142,6 +147,8 @@ export type SaleDetail = {
     item_name: string | null;
   };
   has_failed_attempt: boolean;
+  /** Compra de una cuenta de staff: no cuenta en ventas (migración 20261107302000). */
+  is_staff?: boolean;
   /** false: el rol no tiene ventas.financiero y la BD omitió el desglose. */
   financials_visible?: boolean;
   /** Perfil del cliente; si aún no reclama la compra, el usuario con ese correo. */
@@ -211,7 +218,7 @@ export async function listAdminEvents(args: {
   offset: number;
 }): Promise<EventListRow[]> {
   return rpc<EventListRow[]>("admin_events", {
-    p_search: args.search,
+    p_search: likeText(args.search),
     p_status: args.status,
     p_include_staff: args.includeStaff,
     p_limit: args.limit,
@@ -266,7 +273,7 @@ export type CustomerRow = {
 
 export async function listCustomers(args: { search: string | null; filter: string | null; limit: number; offset: number }): Promise<CustomerRow[]> {
   return rpc<CustomerRow[]>("admin_customers", {
-    p_search: args.search,
+    p_search: likeText(args.search),
     p_filter: args.filter,
     p_limit: args.limit,
     p_offset: args.offset,
@@ -394,9 +401,8 @@ export type CatalogOverviewRow = {
   item_key: string;
   name: string;
   is_active: boolean;
+  /** Complementos. En paquetes es plans.price_cents, que el checkout ya no cobra: usa getCatalog. */
   price_cents: number | null;
-  price_without_tax_cents: number | null;
-  tax_cents: number | null;
   tax_rate_bps: number;
   stripe_product_id: string | null;
   stripe_price_id: string | null;
@@ -420,6 +426,8 @@ export type MonthlyReportRow = {
   comisiones_stripe_cents: number;
   ingresos_netos_cents: number;
   gastos_total_cents: number;
+  /** Sin IVA: ingresos netos − esto = resultado operativo. Llega con la migración 20261107310000. */
+  gastos_subtotal_cents?: number;
   resultado_operativo_cents: number;
   clientes_nuevos: number;
   clientes_de_pago_nuevos: number;
@@ -443,11 +451,31 @@ export type ActivityItem = {
   actor: string | null;
   target_type: string | null;
   target_id: string | null;
+  /** Sin la migración 20261107200000 no llega y la paginación es solo por hora. */
+  row_id?: string;
 };
 
-/** before: para paginar hacia atrás (occurred_at del último renglón visto). */
-export async function getActivity(limit: number, before: string | null): Promise<ActivityItem[]> {
-  return rpc<ActivityItem[]>("admin_activity", { p_limit: limit, p_before: before });
+/**
+ * before + beforeId: occurred_at y row_id del último renglón visto (cursor
+ * compuesto). kind filtra en la BD; filtered = false si la BD aún no tiene
+ * p_kind (sin la migración 20261107310000) y hay que filtrar la página traída.
+ */
+export async function getActivity(
+  limit: number,
+  before: string | null,
+  beforeId: string | null,
+  kind: string | null
+): Promise<{ items: ActivityItem[]; filtered: boolean }> {
+  // p_before_id y p_kind solo cuando hacen falta: así la primera página funciona con o sin las migraciones.
+  const args = { p_limit: limit, p_before: before, ...(beforeId ? { p_before_id: beforeId } : {}) };
+  if (kind) {
+    try {
+      return { items: await rpc<ActivityItem[]>("admin_activity", { ...args, p_kind: kind }), filtered: true };
+    } catch (error) {
+      if (!(error instanceof Error && error.message.startsWith("Falta aplicar"))) throw error;
+    }
+  }
+  return { items: await rpc<ActivityItem[]>("admin_activity", args), filtered: !kind };
 }
 
 // ---------------------------------------------------------------------------
@@ -600,6 +628,8 @@ export type Metrics = {
   uso: {
     eventos_activos: number;
     eventos_proximos: number;
+    /** Días que definen "Próximo" (Configuración). Llega con la migración 20261107310000. */
+    dias_proximo?: number;
     usuarios_activos_30d: number;
     ultima_actividad: { menos_7_dias: number; de_7_a_30_dias: number; de_30_a_90_dias: number; mas_de_90_dias: number; nunca: number };
   };

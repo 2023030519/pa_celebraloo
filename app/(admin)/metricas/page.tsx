@@ -1,38 +1,16 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import type { Metadata } from "next";
+import { CornerDownRight, Info } from "lucide-react";
 import { requirePermission } from "@/lib/auth/require-admin";
 import { getMetrics, type FunnelStep, type Metrics } from "@/lib/data/admin";
 import { addDays, dayRangeLabel, formatBps, formatInt, formatMxn, todayMx } from "@/lib/format";
-import { Card, PageTitle, cn } from "@/components/ui";
+import { METRICS_PRESETS as PRESETS, metricsPeriod, type MetricsPreset } from "@/lib/reports";
+import { Card, HowCalculated, Nil, PageTitle, Segmented, cn, ui, zeroClass } from "@/components/ui";
 import { DataError } from "@/components/finance";
-import { fieldClass } from "@/components/filters";
-import { KpiTile } from "@/components/kpi";
+import { Field, fieldClass } from "@/components/filters";
+import { Figure, FigureRow, FigureStrip } from "@/components/kpi";
 import { BarList, share } from "@/components/bar-list";
 
-const PRESETS = {
-  "30d": "Últimos 30 días",
-  "90d": "Últimos 90 días",
-  anio: "Este año",
-  "12m": "Últimos 12 meses",
-  personalizado: "Personalizado",
-} as const;
-type Preset = keyof typeof PRESETS;
-
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-/** [desde, hasta) en días de CDMX. Personalizado: desde/hasta inclusivos, hasta 3 años. */
-function period(params: { periodo?: string; desde?: string; hasta?: string }, today: string) {
-  const preset: Preset = params.periodo && params.periodo in PRESETS ? (params.periodo as Preset) : "30d";
-  const to = addDays(today, 1);
-  if (preset === "personalizado" && params.desde && ISO_DAY.test(params.desde)) {
-    const end = params.hasta && ISO_DAY.test(params.hasta) && params.hasta < today ? addDays(params.hasta, 1) : to;
-    if (params.desde < end) return { preset, from: params.desde, to: end };
-  }
-  if (preset === "90d") return { preset, from: addDays(today, -89), to };
-  if (preset === "anio") return { preset, from: `${today.slice(0, 4)}-01-01`, to };
-  if (preset === "12m") return { preset, from: addDays(today, -364), to };
-  return { preset: "30d" as Preset, from: addDays(today, -29), to };
-}
+export const metadata: Metadata = { title: "Métricas" };
 
 const STEP_LABEL: Record<FunnelStep, string> = {
   registro: "Registro",
@@ -41,33 +19,36 @@ const STEP_LABEL: Record<FunnelStep, string> = {
   publicada: "Invitación publicada",
 };
 
+const people = (count: number) => `${formatInt(count)} ${count === 1 ? "usuario" : "usuarios"}`;
+
 function Funnel({ steps }: { steps: Metrics["funnel"] }) {
   const start = steps[0]?.usuarios ?? 0;
-  if (start === 0) return <p className="text-ink-600">Nadie se registró en este periodo: no hay funnel que mostrar.</p>;
+  if (start === 0) return <p className="text-sm text-ink-600">Nadie se registró en este periodo: no hay embudo que mostrar.</p>;
   return (
-    <ol className="flex flex-col gap-3">
+    <ol className="flex flex-col gap-4">
       {steps.map((step, index) => {
         const previous = index > 0 ? steps[index - 1].usuarios : null;
         const fromPrevious = previous === null ? null : share(step.usuarios, previous);
         return (
           <li key={step.paso}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-medium">
+            {/* Bajo sm la cifra va siempre debajo del paso: los cuatro pasos comparten forma. */}
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-3">
+              <span className="font-medium text-ink-950">
+                {/* El número sí informa: es el orden del funnel. */}
                 <span className="mr-2 text-xs tabular-nums text-ink-600">{index + 1}.</span>
                 {STEP_LABEL[step.paso]}
               </span>
-              <span className="tabular-nums text-ink-800">
-                <span className="font-semibold text-ink-950">{formatInt(step.usuarios)}</span> usuarios ·{" "}
-                {formatBps(share(step.usuarios, start))} del registro
+              <span className={cn("tabular-nums", zeroClass(step.usuarios, "text-ink-600"))}>
+                <span className={cn("font-semibold", zeroClass(step.usuarios, "text-ink-950"))}>{people(step.usuarios)}</span> · {formatBps(share(step.usuarios, start))} del registro
               </span>
             </div>
-            <div className="mt-1 h-3 rounded bg-surface-2" aria-hidden="true">
-              {step.usuarios > 0 && <div className="h-3 rounded" style={{ width: `${(step.usuarios / start) * 100}%`, background: "#a67c2e" }} />}
+            <div className="mt-1.5 h-2 rounded-full bg-surface-2" aria-hidden="true">
+              {step.usuarios > 0 && <div className="h-2 rounded-full bg-gold-600" style={{ width: `${(step.usuarios / start) * 100}%` }} />}
             </div>
             {fromPrevious !== null && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-ink-600">
-                <ArrowRight size={12} aria-hidden="true" />
-                {previous === 0 ? "Sin usuarios en el paso anterior." : `${formatBps(fromPrevious)} de "${STEP_LABEL[steps[index - 1].paso]}" llegó a este paso.`}
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-600">
+                <CornerDownRight size={12} aria-hidden="true" />
+                {previous === 0 ? "Sin usuarios en el paso anterior." : `${formatBps(fromPrevious)} de “${STEP_LABEL[steps[index - 1].paso]}” llegó a este paso.`}
               </p>
             )}
           </li>
@@ -81,7 +62,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
   await requirePermission("metricas.read");
   const params = await searchParams;
   const today = todayMx();
-  const range = period(params, today);
+  const range = metricsPeriod(params, today);
 
   let metrics: Metrics;
   try {
@@ -103,58 +84,78 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageTitle
-        title="Métricas"
-        subtitle={`Personas registradas del ${label} (sin staff). Ventas del mismo periodo. Uso: hoy.`}
-      />
+      <PageTitle title="Métricas" subtitle={`Registros y ventas del ${label}`} />
 
-      <div className="mb-5 flex flex-wrap items-end gap-3">
-        <div role="group" aria-label="Periodo de registro" className="inline-flex flex-wrap rounded-md border border-ink-250 bg-surface p-0.5">
-          {(Object.keys(PRESETS) as Preset[]).map((preset) => (
-            <Link
-              key={preset}
-              href={preset === "personalizado" ? `/metricas?periodo=personalizado&desde=${range.from}&hasta=${addDays(range.to, -1)}` : `/metricas?periodo=${preset}`}
-              aria-current={preset === range.preset ? "true" : undefined}
-              className={cn(
-                "rounded px-2.5 py-1 text-xs font-semibold whitespace-nowrap",
-                preset === range.preset ? "bg-ink-950 text-surface" : "text-ink-800 hover:bg-paper"
-              )}
-            >
-              {PRESETS[preset]}
-            </Link>
-          ))}
-        </div>
+      <div className="mb-4 flex flex-wrap items-end gap-x-4 gap-y-3">
+        <Segmented
+          wrap
+          label="Periodo de registro"
+          options={Object.entries(PRESETS) as [MetricsPreset, string][]}
+          current={range.preset}
+          href={(preset) =>
+            preset === "personalizado" ? `/metricas?periodo=personalizado&desde=${range.from}&hasta=${addDays(range.to, -1)}` : `/metricas?periodo=${preset}`
+          }
+        />
         {range.preset === "personalizado" && (
-          <form className="flex flex-wrap items-end gap-2">
+          <form className="flex flex-wrap items-end gap-2 max-sm:grid max-sm:w-full max-sm:grid-cols-2">
+            {/* En móvil el rango va a todo el ancho y Aplicar debajo, al pulgar. */}
             <input type="hidden" name="periodo" value="personalizado" />
-            <label className="flex flex-col gap-1 text-xs font-semibold text-ink-800">
-              Desde
-              <input type="date" name="desde" defaultValue={range.from} className={fieldClass} />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-ink-800">
-              Hasta
-              <input type="date" name="hasta" defaultValue={addDays(range.to, -1)} className={fieldClass} />
-            </label>
-            <button className="h-9 rounded-md bg-ink-950 px-4 font-semibold text-surface hover:bg-ink-800">Aplicar</button>
+            <Field label="Desde (dd/mm/aaaa)">
+              <input type="date" lang="es-MX" name="desde" defaultValue={range.from} className={fieldClass} />
+            </Field>
+            <Field label="Hasta (dd/mm/aaaa)">
+              <input type="date" lang="es-MX" name="hasta" defaultValue={addDays(range.to, -1)} className={fieldClass} />
+            </Field>
+            <button className={cn(ui.buttonSecondarySm, "max-sm:col-span-2")}>Aplicar</button>
           </form>
         )}
       </div>
 
-      <Card title="Funnel · Registro → Evento creado → Compra → Invitación publicada" className="mb-6">
-        <Funnel steps={metrics.funnel} />
-        <p className="mt-3 text-xs text-ink-600">
-          De quienes se registraron en el periodo. Cada paso cuenta a quien también cumplió los anteriores. Publicar exige un plan de pago,
-          por eso la compra va antes. Quien pagó antes de registrarse cuenta igual: al reclamar su compra se crea su evento.
+      {range.notice && (
+        <p role="status" className="mb-4 flex items-start gap-2 rounded-md border border-info-300 bg-info-100 px-3 py-2 text-[13px] text-info-700">
+          <Info size={16} className="mt-px shrink-0" aria-hidden="true" />
+          {range.notice}
         </p>
+      )}
+
+      {/* 1. Franja de cifras del periodo: adquisición y monetización. */}
+      <h2 className="sr-only">Cifras del periodo</h2>
+      <div className="mb-6">
+        <FigureStrip>
+          <FigureRow cols={4} label="Adquisición y conversión">
+            <Figure label="Usuarios registrados" value={formatInt(acq.usuarios_registrados)} hint={label} />
+            <Figure label="Clientes nuevos" value={formatInt(acq.clientes_nuevos)} hint="Su primera compra fue en el periodo." />
+            <Figure
+              label="Conversión a pago"
+              value={mon.conversion_bps === null ? <Nil /> : formatBps(mon.conversion_bps)}
+              hint={act.registrados === 0 ? "Sin registros." : `${formatInt(mon.registrados_que_compraron)} de ${formatInt(act.registrados)} registrados.`}
+            />
+            <Figure
+              label="Ticket promedio"
+              value={mon.ticket_promedio_cents === null ? <Nil /> : formatMxn(mon.ticket_promedio_cents)}
+              hint={mon.transacciones === 0 ? "Aún no hay ventas en el periodo." : `${formatInt(mon.transacciones)} ventas.`}
+            />
+          </FigureRow>
+          <FigureRow cols={2} label="Descuentos">
+            <Figure size="sm" label="Ventas con descuento" value={formatInt(mon.ventas_con_descuento)} />
+            <Figure
+              size="sm"
+              label="Descuentos"
+              value={mon.descuentos_cents ? `−${formatMxn(mon.descuentos_cents)}` : formatMxn(0)}
+              hint={mon.descuentos_cents ? undefined : "Sin cupones usados."}
+            />
+          </FigureRow>
+        </FigureStrip>
+      </div>
+
+      {/* 2. Funnel. El orden de los pasos lo da la BD (antes de 20261107200000 la compra iba antes de publicar). */}
+      <Card title="Embudo" className="mb-6">
+        <Funnel steps={metrics.funnel} />
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card title="Adquisición">
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <KpiTile size="md" label="Usuarios registrados" value={formatInt(acq.usuarios_registrados)} />
-            <KpiTile size="md" label="Clientes nuevos" value={formatInt(acq.clientes_nuevos)} hint="Su primera compra fue en el periodo." />
-          </div>
-          <h3 className="mb-2 text-[13px] font-semibold">Fuente de adquisición</h3>
+      {/* 3. Desglose del periodo. */}
+      <div className="mb-8 grid gap-6 xl:grid-cols-2">
+        <Card title="Fuente de adquisición">
           <BarList
             empty="Nadie se registró en este periodo."
             items={acq.fuentes.map((source) => ({
@@ -164,9 +165,6 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
               shareBps: share(source.usuarios, acq.usuarios_registrados),
             }))}
           />
-          <p className="mt-2 text-xs text-ink-600">
-            «Sin dato» = se registró antes de que se capturara la fuente. «Directo» = sin UTM ni sitio de origen.
-          </p>
         </Card>
 
         <Card title="Activación">
@@ -183,75 +181,80 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
                   ]
             }
           />
-          <p className="mt-2 text-xs text-ink-600">
-            Porcentaje sobre {formatInt(act.registrados)} registrados. Los invitados de demostración no cuentan.
-          </p>
         </Card>
 
-        <Card title="Monetización">
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <KpiTile
-              size="md"
-              label="Conversión gratis a pago"
-              value={mon.conversion_bps === null ? "—" : formatBps(mon.conversion_bps)}
-              hint={act.registrados === 0 ? "Sin registros." : `${formatInt(mon.registrados_que_compraron)} de ${formatInt(act.registrados)} registrados.`}
-            />
-            <KpiTile
-              size="md"
-              label="Ticket promedio"
-              value={mon.ticket_promedio_cents === null ? "—" : formatMxn(mon.ticket_promedio_cents)}
-              hint={mon.transacciones === 0 ? "Aún no hay ventas en el periodo." : `${formatInt(mon.transacciones)} ventas.`}
-            />
-            <KpiTile
-              size="md"
-              label="Ventas con descuento"
-              value={formatInt(mon.ventas_con_descuento)}
-              hint={mon.descuentos_cents ? `−${formatMxn(mon.descuentos_cents)} en descuentos.` : "Sin cupones usados."}
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <h3 className="mb-2 text-[13px] font-semibold">Ventas por plan</h3>
-              <BarList
-                empty="Aún no hay ventas de planes."
-                items={plans.map((item) => ({ key: item.clave, label: item.nombre, value: item.ventas, shareBps: item.porcentaje_bps }))}
-              />
-            </div>
-            <div>
-              <h3 className="mb-2 text-[13px] font-semibold">Ventas por complemento</h3>
-              <BarList
-                empty="Aún no hay ventas de complementos."
-                items={addons.map((item) => ({ key: item.clave, label: item.nombre, value: item.ventas, shareBps: item.porcentaje_bps }))}
-              />
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Uso (hoy)">
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <KpiTile size="md" label="Eventos activos" value={formatInt(uso.eventos_activos)} hint="Publicados y por venir." />
-            <KpiTile size="md" label="Eventos próximos" value={formatInt(uso.eventos_proximos)} hint="En los próximos 30 días." />
-            <KpiTile size="md" label="Usuarios activos" value={formatInt(uso.usuarios_activos_30d)} hint="Con actividad en los últimos 30 días." />
-          </div>
-          <h3 className="mb-2 text-[13px] font-semibold">Última actividad</h3>
+        <Card title="Ventas por plan">
           <BarList
-            empty="Aún no hay clientes."
-            unit="usuarios"
-            items={
-              activityTotal === 0
-                ? []
-                : [
-                    { key: "7", label: "Hace menos de 7 días", value: uso.ultima_actividad.menos_7_dias, shareBps: share(uso.ultima_actividad.menos_7_dias, activityTotal) },
-                    { key: "30", label: "De 7 a 30 días", value: uso.ultima_actividad.de_7_a_30_dias, shareBps: share(uso.ultima_actividad.de_7_a_30_dias, activityTotal) },
-                    { key: "90", label: "De 30 a 90 días", value: uso.ultima_actividad.de_30_a_90_dias, shareBps: share(uso.ultima_actividad.de_30_a_90_dias, activityTotal) },
-                    { key: "mas", label: "Hace más de 90 días", value: uso.ultima_actividad.mas_de_90_dias, shareBps: share(uso.ultima_actividad.mas_de_90_dias, activityTotal) },
-                    { key: "nunca", label: "Sin actividad registrada", value: uso.ultima_actividad.nunca, shareBps: share(uso.ultima_actividad.nunca, activityTotal) },
-                  ]
-            }
+            empty="Aún no hay ventas de planes."
+            items={plans.map((item) => ({ key: item.clave, label: item.nombre, value: item.ventas, shareBps: item.porcentaje_bps }))}
           />
-          <p className="mt-2 text-xs text-ink-600">Todos los clientes (sin staff). Actividad = navegación en Celebraloo o inicio de sesión.</p>
+        </Card>
+
+        <Card title="Ventas por complemento">
+          <BarList
+            empty="Aún no hay ventas de complementos."
+            items={addons.map((item) => ({ key: item.clave, label: item.nombre, value: item.ventas, shareBps: item.porcentaje_bps }))}
+          />
         </Card>
       </div>
+
+      {/* 4. Uso: foto de hoy, no depende del periodo elegido. */}
+      <section aria-labelledby="usage">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 id="usage" className="text-base font-semibold text-ink-950">
+            Uso hoy
+          </h2>
+          <p className="text-[13px] text-ink-600">Todos los clientes (sin staff). No depende del periodo.</p>
+        </div>
+        <FigureStrip>
+          <FigureRow cols={3} label="Uso hoy">
+            <Figure size="md" label="Eventos activos" value={formatInt(uso.eventos_activos)} hint="Publicados y por venir." />
+            <Figure
+              size="md"
+              label="Eventos próximos"
+              value={formatInt(uso.eventos_proximos)}
+              hint={uso.dias_proximo ? `En los próximos ${formatInt(uso.dias_proximo)} días.` : "En los días de “Próximo” de Configuración."}
+            />
+            <Figure size="md" label="Usuarios activos" value={formatInt(uso.usuarios_activos_30d)} hint="Con actividad en los últimos 30 días." />
+          </FigureRow>
+          <div className="bg-surface px-5 py-4">
+            <h3 className="mb-3 text-[13px] font-semibold text-ink-950">Última actividad</h3>
+            <BarList
+              empty="Aún no hay clientes."
+              unit="usuarios"
+              items={
+                activityTotal === 0
+                  ? []
+                  : [
+                      { key: "7", label: "Hace menos de 7 días", value: uso.ultima_actividad.menos_7_dias, shareBps: share(uso.ultima_actividad.menos_7_dias, activityTotal) },
+                      { key: "30", label: "De 7 a 30 días", value: uso.ultima_actividad.de_7_a_30_dias, shareBps: share(uso.ultima_actividad.de_7_a_30_dias, activityTotal) },
+                      { key: "90", label: "De 30 a 90 días", value: uso.ultima_actividad.de_30_a_90_dias, shareBps: share(uso.ultima_actividad.de_30_a_90_dias, activityTotal) },
+                      { key: "mas", label: "Hace más de 90 días", value: uso.ultima_actividad.mas_de_90_dias, shareBps: share(uso.ultima_actividad.mas_de_90_dias, activityTotal) },
+                      { key: "nunca", label: "Sin actividad registrada", value: uso.ultima_actividad.nunca, shareBps: share(uso.ultima_actividad.nunca, activityTotal) },
+                    ]
+              }
+            />
+          </div>
+        </FigureStrip>
+      </section>
+
+      {/* R8: una sola ayuda por página, con un subtítulo por tema. */}
+      <HowCalculated className="mt-6">
+        <p className="font-medium text-ink-800">Cifras del periodo</p>
+        <p>Personas registradas del {label} (sin staff). Ventas del mismo periodo. Uso: hoy.</p>
+        <p>Conversión a pago: de quienes se registraron en el periodo, cuántos pagaron.</p>
+        <p className="mt-2 font-medium text-ink-800">Embudo</p>
+        <p>
+          De quienes se registraron en el periodo. Cada paso cuenta a quien también cumplió los anteriores. Con Esencial se publica sin
+          pagar. Quien pagó antes de registrarse cuenta igual: al reclamar su compra se crea su evento.
+        </p>
+        <p className="mt-2 font-medium text-ink-800">Fuente de adquisición</p>
+        <p>“Sin dato” = se registró antes de que se capturara la fuente. “Directo” = sin UTM ni sitio de origen.</p>
+        <p className="mt-2 font-medium text-ink-800">Activación</p>
+        <p>Porcentaje sobre {formatInt(act.registrados)} registrados. Los invitados de demostración no cuentan.</p>
+        <p className="mt-2 font-medium text-ink-800">Última actividad</p>
+        <p>Actividad = navegación en Celebraloo o inicio de sesión.</p>
+      </HowCalculated>
     </>
   );
 }

@@ -100,6 +100,24 @@ export async function renameStripeCoupon(couponId: string, name: string): Promis
   await getStripe().coupons.update(couponId, { name: name.slice(0, 40) });
 }
 
+export async function deleteStripeCoupon(couponId: string): Promise<void> {
+  await getStripe().coupons.del(couponId);
+}
+
+/** El nombre que ven el checkout y el recibo cuando el plan o complemento tiene Product. */
+export async function renameStripeProduct(productId: string, name: string): Promise<void> {
+  await getStripe().products.update(productId, { name });
+}
+
+/** Códigos activos que creó el panel (llevan metadata celebraloo_code) antes de `createdBefore`. */
+export async function listActivePanelPromotionCodes(createdBefore: Date): Promise<Stripe.PromotionCode[]> {
+  const codes: Stripe.PromotionCode[] = [];
+  for await (const code of getStripe().promotionCodes.list({ active: true, created: { lt: unix(createdBefore) }, limit: 100 })) {
+    if (code.metadata?.celebraloo_code) codes.push(code);
+  }
+  return codes;
+}
+
 export async function readStripePromotionCode(promotionCodeId: string): Promise<Stripe.PromotionCode> {
   return getStripe().promotionCodes.retrieve(promotionCodeId);
 }

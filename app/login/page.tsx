@@ -2,7 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { CircleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { BrandMark, cn, ui } from "@/components/ui";
+
+const field = cn(ui.field, "h-10 w-full max-md:h-11");
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,50 +30,56 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-dvh place-items-center p-6">
-      <form
-        onSubmit={submit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-ink-150 bg-surface p-6 shadow-sm"
-      >
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-800">Celebraloo</p>
-          <h1 className="mt-1 text-xl font-semibold">Panel de administración</h1>
-          <p className="mt-1 text-ink-600">Entra con tu cuenta de Celebraloo.</p>
+    // La misma marca oscura de la barra lateral del panel.
+    <main className="grid min-h-dvh place-items-center bg-nav-bg px-4 py-10">
+      <div className="w-full max-w-[400px]">
+        <div className="mb-6 flex items-center gap-2.5">
+          <BrandMark />
+          <div>
+            <p className="text-[15px] font-semibold text-white">Celebraloo</p>
+            <p className="text-xs text-nav-muted">Panel de administración</p>
+          </div>
         </div>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-ink-800">Correo</span>
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="h-10 rounded-md border border-ink-250 bg-surface px-3 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-ink-800">Contraseña</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="h-10 rounded-md border border-ink-250 bg-surface px-3 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30"
-          />
-        </label>
-        {error && (
-          <p role="alert" className="rounded-md bg-danger-100 px-3 py-2 text-danger-700">
-            {error}
-          </p>
-        )}
-        <button
-          disabled={pending}
-          className="h-10 rounded-md bg-ink-950 font-semibold text-surface transition-colors hover:bg-ink-800 disabled:opacity-50"
-        >
-          {pending ? "Entrando…" : "Entrar"}
-        </button>
-      </form>
+        <form onSubmit={submit} className="flex flex-col gap-4 rounded-lg border border-ink-150 bg-surface p-6">
+          <div>
+            <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink-950">Iniciar sesión</h1>
+            <p className="mt-1 text-sm text-ink-600">Entra con tu cuenta de Celebraloo.</p>
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-[13px] font-medium text-ink-800">Correo</span>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={error ? true : undefined}
+              className={field}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[13px] font-medium text-ink-800">Contraseña</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-invalid={error ? true : undefined}
+              className={field}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="flex items-start gap-2 rounded-md bg-danger-100 px-3 py-2 text-danger-700 ring-1 ring-danger-300 ring-inset">
+              <CircleAlert size={16} aria-hidden="true" className="mt-px shrink-0" />
+              {error}
+            </p>
+          )}
+          <button disabled={pending} className={cn(ui.buttonPrimary, "mt-1 w-full md:h-10")}>
+            {pending ? "Entrando…" : "Entrar"}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

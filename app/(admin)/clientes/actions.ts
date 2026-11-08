@@ -18,6 +18,21 @@ function cleanReason(reason: string): string | null {
   return trimmed.length >= 3 ? trimmed.slice(0, 500) : null;
 }
 
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
+
+/** Los errores de Supabase Auth llegan en inglés ("Gateway Timeout", "User not found"…). */
+function authErrorMessage(error: { status?: number; code?: string; message: string }, action: string): string {
+  console.error(`[auth] ${action}`, error);
+  if (error.status === 429 || /rate limit/i.test(error.message)) {
+    return `${action}: Supabase limitó los envíos por unos minutos. Intenta más tarde.`;
+  }
+  if ((error.status ?? 0) >= 500 || /timeout|fetch failed/i.test(error.message)) {
+    return `${action}: Supabase no respondió a tiempo. Intenta en unos minutos.`;
+  }
+  if (error.status === 404 || error.code === "user_not_found") return `${action}: la cuenta ya no existe.`;
+  return `${action}. Intenta de nuevo en unos minutos.`;
+}
+
 function rpcError(error: { code?: string; message: string }): string {
   if (error.code === "42501") return NO_PERMISSION;
   if (error.code === "22023") return "Escribe un motivo (mínimo 3 caracteres).";
@@ -68,6 +83,11 @@ export async function resendConfirmation(userId: string, reason: string): Promis
   const { data, error } = await createServiceRoleClient().auth.admin.getUserById(userId);
   if (error || !data.user?.email) return { ok: false, message: "Cliente no encontrado." };
   if (data.user.email_confirmed_at) return { ok: false, message: "Este cliente ya confirmó su correo." };
+  // Supabase tarda hasta ~30 s en responder: un segundo clic no debe mandar otro correo.
+  const sentAt = data.user.confirmation_sent_at ? Date.parse(data.user.confirmation_sent_at) : 0;
+  if (Date.now() - sentAt < RESEND_COOLDOWN_MS) {
+    return { ok: false, message: "Ya se le envió un correo hace menos de 2 minutos. Espera un poco antes de reenviarlo." };
+  }
 
   // Mismo envío que hace Celebraloo al registrarse (llave pública, sin sesión).
   const publicClient = createPlainClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!.trim(), {
@@ -78,14 +98,7 @@ export async function resendConfirmation(userId: string, reason: string): Promis
     email: data.user.email,
     options: { emailRedirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent("/onboarding")}` },
   });
-  if (resendError) {
-    return {
-      ok: false,
-      message: /rate limit/i.test(resendError.message)
-        ? "Supabase limitó el envío de correos por unos minutos. Intenta más tarde."
-        : resendError.message,
-    };
-  }
+  if (resendError) return { ok: false, message: authErrorMessage(resendError, "No se pudo enviar el correo") };
 
   const logError = await recordAccountAction(userId, "account.resend_confirmation", why);
   refresh();
@@ -95,9 +108,12 @@ export async function resendConfirmation(userId: string, reason: string): Promis
 }
 
 /**
- * Suspender = ban de Supabase Auth: ya no puede iniciar sesión ni renovarla
- * (una sesión abierta dura hasta que vence su token, 1 h como máximo). Sus
- * eventos e invitaciones públicas no se tocan.
+ * Suspender = ban de Supabase Auth: ya no puede iniciar sesión ni renovarla.
+ * Al registrarlo, admin_record_account_action borra sus sesiones (migración
+ * 20261107210000) y la pre-request de PostgREST rechaza su JWT vigente
+ * (20261107211000); sin ellas, una sesión abierta dura hasta 1 h. Sus eventos
+ * e invitaciones públicas no se tocan. El ban va antes del registro porque la
+ * API de Auth no entra en la transacción: si el registro falla, la UI lo dice.
  */
 export async function setAccountSuspended(userId: string, suspend: boolean, reason: string): Promise<ActionResult> {
   const admin = await requireAdmin();
@@ -118,7 +134,7 @@ export async function setAccountSuspended(userId: string, suspend: boolean, reas
       account_status_at: new Date().toISOString(),
     },
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: authErrorMessage(error, suspend ? "No se pudo suspender" : "No se pudo reactivar") };
 
   const logError = await recordAccountAction(userId, suspend ? "account.disable" : "account.enable", why);
   refresh();
@@ -130,8 +146,8 @@ export type AssignKind = "plan" | "complemento" | "acceso_total";
 
 /**
  * Plan, complemento o acceso total para un evento del cliente, en una sola
- * transacción (admin_assign_to_event). Crea grants admin_override con el
- * motivo; no crea compras, así que nunca cuenta como venta ni ingreso.
+ * transacción (admin_assign_to_event). Suma igual que una compra (con autor y
+ * motivo); no crea compras, así que nunca cuenta como venta ni ingreso.
  */
 export async function assignToEvent(input: {
   eventId: string;

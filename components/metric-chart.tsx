@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { formatInt, formatMxn } from "@/lib/format";
 
 export type ChartPoint = { start: string; end: string; value: number };
@@ -10,7 +11,6 @@ export type ChartBucket = "day" | "week" | "month";
 const BAR_COLOR = "#a67c2e";
 const HEIGHT = 200;
 const PAD = { top: 12, right: 8, bottom: 24, left: 56 };
-const MAX_X_LABELS = 10;
 
 const compact = new Intl.NumberFormat("es-MX", { notation: "compact", maximumFractionDigits: 1 });
 const date = (iso: string, options: Intl.DateTimeFormatOptions) =>
@@ -59,35 +59,57 @@ export function MetricChart({
   money,
   metricLabel,
   emptyText,
+  unit,
 }: {
   points: ChartPoint[];
   bucket: ChartBucket;
   money: boolean;
   metricLabel: string;
   emptyText: string;
+  /** Unidad de cada barra ("Por día"); va en la línea de "Ver como tabla". */
+  unit: string;
 }) {
   const [active, setActive] = useState<number | null>(null);
-  const format = (value: number) => (money ? formatMxn(value) : formatInt(value));
+  // viewBox = ancho real en píxeles: el texto de 11px se ve de 11px en cualquier pantalla.
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(720);
   const max = Math.max(0, ...points.map((point) => point.value));
+  const allZero = max === 0;
+  // Depende de allZero: la franja vacía y la gráfica montan elementos distintos.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(320, Math.round(entry.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [allZero]);
+  const format = (value: number) => (money ? formatMxn(value) : formatInt(value));
   const ticks = niceTicks(max, money);
   const top = ticks[ticks.length - 1];
-  const width = 720;
   const plotW = width - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const slot = plotW / Math.max(points.length, 1);
   const barW = Math.min(28, Math.max(2, slot - 2));
   const y = (value: number) => PAD.top + plotH - (value / top) * plotH;
-  const labelEvery = Math.max(1, Math.ceil(points.length / MAX_X_LABELS));
+  const labelEvery = Math.max(1, Math.ceil(points.length / Math.max(3, Math.floor(plotW / 56))));
   const hovered = active === null ? null : points[active];
-  const allZero = max === 0;
+
+  // Serie toda en cero: franja compacta con el mensaje, sin ejes ni tabla de ceros. El ref se queda montado para medir al volver a haber datos.
+  if (allZero) {
+    return (
+      <div ref={ref}>
+        <p className="flex h-[72px] items-center justify-center rounded-md bg-surface-2 px-4 text-center text-sm text-ink-600">{emptyText}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="relative">
+      <div ref={ref} className="relative">
         <svg viewBox={`0 0 ${width} ${HEIGHT}`} className="h-auto w-full" role="img" aria-label={`${metricLabel} por periodo`}>
           {ticks.map((tick) => (
             <g key={tick}>
-              <line x1={PAD.left} x2={width - PAD.right} y1={y(tick)} y2={y(tick)} stroke="var(--ink-150)" strokeWidth={1} />
+              {tick > 0 && <line x1={PAD.left} x2={width - PAD.right} y1={y(tick)} y2={y(tick)} stroke="var(--ink-150)" strokeWidth={1} />}
               <text x={PAD.left - 8} y={y(tick)} dy="0.32em" textAnchor="end" fontSize={11} fill="var(--ink-600)">
                 {money ? `$${compact.format(tick / 100)}` : compact.format(tick)}
               </text>
@@ -108,19 +130,15 @@ export function MetricChart({
                     opacity={active === null || active === index ? 1 : 0.45}
                   />
                 )}
-                {/* Zona de hover más grande que la barra: toda la columna. */}
+                {/* Zona de hover (solo ratón) de toda la columna; con teclado se usa "Ver como tabla". */}
                 <rect
                   x={PAD.left + index * slot}
                   y={PAD.top}
                   width={slot}
                   height={plotH}
                   fill="transparent"
-                  tabIndex={0}
-                  aria-label={`${bucketLabel(point, bucket)}: ${format(point.value)}`}
                   onMouseEnter={() => setActive(index)}
                   onMouseLeave={() => setActive(null)}
-                  onFocus={() => setActive(index)}
-                  onBlur={() => setActive(null)}
                 />
                 {(index % labelEvery === 0 || index === points.length - 1) && (
                   <text x={PAD.left + index * slot + slot / 2} y={HEIGHT - 6} textAnchor="middle" fontSize={11} fill="var(--ink-600)">
@@ -132,9 +150,6 @@ export function MetricChart({
           })}
           <line x1={PAD.left} x2={width - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH} stroke="var(--ink-250)" strokeWidth={1} />
         </svg>
-        {allZero && (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-ink-600">{emptyText}</p>
-        )}
         {hovered && active !== null && (
           <div
             role="status"
@@ -148,8 +163,13 @@ export function MetricChart({
           </div>
         )}
       </div>
-      <details className="mt-2 text-xs text-ink-600">
-        <summary className="cursor-pointer font-semibold">Ver como tabla</summary>
+      {/* "Ver como tabla · unidad" en una línea; abierta, la tabla toma el ancho completo. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-600">
+      <details className="group open:basis-full">
+        <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm py-0.5 font-medium transition-colors duration-[var(--dur-fast)] hover:text-ink-950 [&::-webkit-details-marker]:hidden">
+          Ver como tabla
+          <ChevronRight size={14} aria-hidden="true" className="transition-transform duration-[var(--dur-fast)] group-open:rotate-90 motion-reduce:transition-none" />
+        </summary>
         <div className="mt-2 max-h-56 overflow-y-auto">
           <table className="w-full text-left">
             <thead>
@@ -169,6 +189,9 @@ export function MetricChart({
           </table>
         </div>
       </details>
+      <span aria-hidden="true">·</span>
+      <span>{unit}</span>
+      </div>
     </div>
   );
 }

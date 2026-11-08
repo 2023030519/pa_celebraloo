@@ -1,0 +1,804 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T00:00:00Z",
+  "title": "Design System: Celebraloo Admin",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel",
+        "canonical": "#f6f7f9",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#262627",
+          "#444546",
+          "#656668",
+          "#88898b",
+          "#adaeaf",
+          "#d0d1d2",
+          "#f6f7f9"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superficie",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#262626",
+          "#454545",
+          "#666666",
+          "#898989",
+          "#aeaeae",
+          "#d1d1d1",
+          "#ffffff"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Superficie 2",
+        "canonical": "#f2f4f7",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#262627",
+          "#444547",
+          "#656668",
+          "#88898b",
+          "#adaeb0",
+          "#d0d1d2",
+          "#f2f4f7"
+        ]
+      },
+      "ink-950": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#1a1d23",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "ink-800": {
+        "role": "neutral",
+        "displayName": "Tinta media",
+        "canonical": "#3a3f4a",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "ink-600": {
+        "role": "neutral",
+        "displayName": "Tinta secundaria",
+        "canonical": "#545a66",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "ink-400": {
+        "role": "neutral",
+        "displayName": "Tinta tenue",
+        "canonical": "#6b7280",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "ink-250": {
+        "role": "neutral",
+        "displayName": "Borde de campo",
+        "canonical": "#8a909c",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "ink-150": {
+        "role": "neutral",
+        "displayName": "Divisor",
+        "canonical": "#e4e7ec",
+        "tonalRamp": [
+          "#15171c",
+          "#1a1d23",
+          "#3a3f4a",
+          "#545a66",
+          "#6b7280",
+          "#8a909c",
+          "#e4e7ec",
+          "#f6f7f9"
+        ]
+      },
+      "gold-800": {
+        "role": "primary",
+        "displayName": "Oro tinta",
+        "canonical": "#6a5938",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "gold-900": {
+        "role": "primary",
+        "displayName": "Oro tinta profundo",
+        "canonical": "#574828",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "gold-600": {
+        "role": "primary",
+        "displayName": "Oro de foco",
+        "canonical": "#957637",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "gold-100": {
+        "role": "primary",
+        "displayName": "Oro de selección",
+        "canonical": "#f7f1e4",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "gold-chart": {
+        "role": "primary",
+        "displayName": "Oro de gráfica",
+        "canonical": "#a67c2e",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "gold-brand": {
+        "role": "primary",
+        "displayName": "Oro de marca",
+        "canonical": "#c8a96a",
+        "tonalRamp": [
+          "#2d2518",
+          "#574828",
+          "#6a5938",
+          "#957637",
+          "#a67c2e",
+          "#c8a96a",
+          "#d4b578",
+          "#f7f1e4"
+        ]
+      },
+      "ok-700": {
+        "role": "status",
+        "displayName": "Verde correcto",
+        "canonical": "#067647",
+        "tonalRamp": [
+          "#072f1b",
+          "#05603a",
+          "#067647",
+          "#1f784c",
+          "#509b71",
+          "#86bd9b",
+          "#abefc6",
+          "#ecfdf3"
+        ]
+      },
+      "ok-800": {
+        "role": "status",
+        "displayName": "Verde correcto profundo",
+        "canonical": "#05603a",
+        "tonalRamp": [
+          "#072f1b",
+          "#05603a",
+          "#067647",
+          "#1f784c",
+          "#509b71",
+          "#86bd9b",
+          "#abefc6",
+          "#ecfdf3"
+        ]
+      },
+      "ok-300": {
+        "role": "status",
+        "displayName": "Borde verde",
+        "canonical": "#abefc6",
+        "tonalRamp": [
+          "#072f1b",
+          "#05603a",
+          "#067647",
+          "#1f784c",
+          "#509b71",
+          "#86bd9b",
+          "#abefc6",
+          "#ecfdf3"
+        ]
+      },
+      "ok-100": {
+        "role": "status",
+        "displayName": "Fondo verde",
+        "canonical": "#ecfdf3",
+        "tonalRamp": [
+          "#072f1b",
+          "#05603a",
+          "#067647",
+          "#1f784c",
+          "#509b71",
+          "#86bd9b",
+          "#abefc6",
+          "#ecfdf3"
+        ]
+      },
+      "warn-700": {
+        "role": "status",
+        "displayName": "Ámbar de atención",
+        "canonical": "#93370d",
+        "tonalRamp": [
+          "#40190a",
+          "#6e3018",
+          "#93370d",
+          "#c37051",
+          "#dd9c84",
+          "#f4c5b4",
+          "#fedf89",
+          "#fffaeb"
+        ]
+      },
+      "warn-300": {
+        "role": "status",
+        "displayName": "Borde ámbar",
+        "canonical": "#fedf89",
+        "tonalRamp": [
+          "#40190a",
+          "#6e3018",
+          "#93370d",
+          "#c37051",
+          "#dd9c84",
+          "#f4c5b4",
+          "#fedf89",
+          "#fffaeb"
+        ]
+      },
+      "warn-100": {
+        "role": "status",
+        "displayName": "Fondo ámbar",
+        "canonical": "#fffaeb",
+        "tonalRamp": [
+          "#40190a",
+          "#6e3018",
+          "#93370d",
+          "#c37051",
+          "#dd9c84",
+          "#f4c5b4",
+          "#fedf89",
+          "#fffaeb"
+        ]
+      },
+      "danger-700": {
+        "role": "status",
+        "displayName": "Rojo de problema",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#490e09",
+          "#912018",
+          "#b42318",
+          "#d75e4e",
+          "#ee9182",
+          "#ffbeb3",
+          "#fecdca",
+          "#fef3f2"
+        ]
+      },
+      "danger-800": {
+        "role": "status",
+        "displayName": "Rojo profundo",
+        "canonical": "#912018",
+        "tonalRamp": [
+          "#490e09",
+          "#912018",
+          "#b42318",
+          "#d75e4e",
+          "#ee9182",
+          "#ffbeb3",
+          "#fecdca",
+          "#fef3f2"
+        ]
+      },
+      "danger-300": {
+        "role": "status",
+        "displayName": "Borde rojo",
+        "canonical": "#fecdca",
+        "tonalRamp": [
+          "#490e09",
+          "#912018",
+          "#b42318",
+          "#d75e4e",
+          "#ee9182",
+          "#ffbeb3",
+          "#fecdca",
+          "#fef3f2"
+        ]
+      },
+      "danger-100": {
+        "role": "status",
+        "displayName": "Fondo rojo",
+        "canonical": "#fef3f2",
+        "tonalRamp": [
+          "#490e09",
+          "#912018",
+          "#b42318",
+          "#d75e4e",
+          "#ee9182",
+          "#ffbeb3",
+          "#fecdca",
+          "#fef3f2"
+        ]
+      },
+      "info-700": {
+        "role": "status",
+        "displayName": "Azul informativo",
+        "canonical": "#175cd3",
+        "tonalRamp": [
+          "#072354",
+          "#133f8e",
+          "#175cd3",
+          "#4b85ed",
+          "#80aefd",
+          "#b2d2ff",
+          "#b2ddff",
+          "#eff8ff"
+        ]
+      },
+      "info-300": {
+        "role": "status",
+        "displayName": "Borde azul",
+        "canonical": "#b2ddff",
+        "tonalRamp": [
+          "#072354",
+          "#133f8e",
+          "#175cd3",
+          "#4b85ed",
+          "#80aefd",
+          "#b2d2ff",
+          "#b2ddff",
+          "#eff8ff"
+        ]
+      },
+      "info-100": {
+        "role": "status",
+        "displayName": "Fondo azul",
+        "canonical": "#eff8ff",
+        "tonalRamp": [
+          "#072354",
+          "#133f8e",
+          "#175cd3",
+          "#4b85ed",
+          "#80aefd",
+          "#b2d2ff",
+          "#b2ddff",
+          "#eff8ff"
+        ]
+      },
+      "nav-bg": {
+        "role": "neutral",
+        "displayName": "Fondo de barra",
+        "canonical": "#15171c",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-hover": {
+        "role": "neutral",
+        "displayName": "Hover de barra",
+        "canonical": "#20232a",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-active": {
+        "role": "neutral",
+        "displayName": "Activo de barra",
+        "canonical": "#2a2e37",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-rule": {
+        "role": "neutral",
+        "displayName": "Regla de barra",
+        "canonical": "#2c3038",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-fg": {
+        "role": "neutral",
+        "displayName": "Texto de barra",
+        "canonical": "#eceef2",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-muted": {
+        "role": "neutral",
+        "displayName": "Texto apagado de barra",
+        "canonical": "#a3a9b5",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      },
+      "nav-accent": {
+        "role": "neutral",
+        "displayName": "Oro de barra",
+        "canonical": "#d4b578",
+        "tonalRamp": [
+          "#15171c",
+          "#20232a",
+          "#2a2e37",
+          "#2c3038",
+          "#64666c",
+          "#a3a9b5",
+          "#d4b578",
+          "#eceef2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Cifra principal",
+        "purpose": "Cifra principal de dinero, tamaño lg de Figure/KpiTile/MoneyTile; 22 px en móvil."
+      },
+      "headline": {
+        "displayName": "Título de página",
+        "purpose": "h1 de PageTitle."
+      },
+      "figure-md": {
+        "displayName": "Cifra secundaria",
+        "purpose": "Segunda fila de la franja de cifras; título del login."
+      },
+      "title": {
+        "displayName": "Título de sección",
+        "purpose": "Título de Card y de Table."
+      },
+      "body": {
+        "displayName": "Cuerpo",
+        "purpose": "Texto de tabla, subtítulo, campos y botones; 16 px en campos móviles."
+      },
+      "body-sm": {
+        "displayName": "Cuerpo chico",
+        "purpose": "Navegación, etiquetas de cifra, Breadcrumb, HowCalculated."
+      },
+      "label": {
+        "displayName": "Etiqueta",
+        "purpose": "Encabezados de tabla, badges, botones chicos, conteos."
+      },
+      "nav-group": {
+        "displayName": "Grupo de barra",
+        "purpose": "Solo títulos de grupo de la barra lateral, en mayúsculas."
+      }
+    },
+    "shadows": [
+      {
+        "name": "segment-selected",
+        "value": "0 1px 2px rgba(16,24,40,0.08)",
+        "purpose": "Opción elegida de Segmented, junto con anillo ink-150."
+      },
+      {
+        "name": "floating",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Tooltip de metric-chart, la única capa que flota."
+      },
+      {
+        "name": "focus-ring-field",
+        "value": "0 0 0 2px rgba(149,118,55,0.25)",
+        "purpose": "Anillo de foco de campo, junto con borde gold-600."
+      },
+      {
+        "name": "menu-scrim",
+        "value": "rgb(0 0 0 / 0.4)",
+        "purpose": "Velo detrás del menú móvil (fondo, no sombra)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Curva por defecto de toda transición."
+      },
+      {
+        "name": "dur-fast",
+        "value": "120ms",
+        "purpose": "Hover, color, borde, chevrons; duración por defecto de transition-*."
+      },
+      {
+        "name": "dur-base",
+        "value": "160ms",
+        "purpose": "La única entrada (.animate-enter): opacidad + 4 px, menú móvil y ConfirmAction."
+      },
+      {
+        "name": "dur-slow",
+        "value": "200ms",
+        "purpose": "Techo del contrato; definido, sin uso hoy."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Con prefers-reduced-motion: reduce todo queda instantáneo."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción primaria de la página, arriba a la derecha del encabezado (ui.buttonPrimary, components/ui.tsx).",
+      "html": "<button class=\"ds-btn-primary\">Registrar gasto</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 120ms cubic-bezier(0.2,0,0,1);font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;background:var(--gold-800,#6a5938);color:#fff;border:none;} .ds-btn-primary:hover{background:#574828;} .ds-btn-primary:focus-visible{outline:2px solid var(--gold-600,#957637);outline-offset:2px;} .ds-btn-primary:disabled{background:var(--surface-2,#f2f4f7);color:var(--ink-400,#6b7280);border:1px solid var(--ink-250,#8a909c);cursor:not-allowed;}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acciones de apoyo, Filtrar, paginación (ui.buttonSecondary).",
+      "html": "<button class=\"ds-btn-secondary\">Ver como usuario</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 120ms cubic-bezier(0.2,0,0,1);font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;background:var(--surface,#fff);color:var(--ink-950,#1a1d23);border:1px solid var(--ink-250,#8a909c);} .ds-btn-secondary:hover{background:var(--surface-2,#f2f4f7);} .ds-btn-secondary:focus-visible{outline:2px solid var(--gold-600,#957637);outline-offset:2px;} .ds-btn-secondary:disabled{background:var(--surface-2,#f2f4f7);color:var(--ink-400,#6b7280);border:1px solid var(--ink-250,#8a909c);cursor:not-allowed;}"
+    },
+    {
+      "name": "Botón de peligro",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Borrar o suspender, solo en la ficha y al final en móvil (ui.buttonDanger).",
+      "html": "<button class=\"ds-btn-danger\">Borrar para siempre</button>",
+      "css": ".ds-btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 120ms cubic-bezier(0.2,0,0,1);font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;background:var(--danger-700,#b42318);color:#fff;border:none;} .ds-btn-danger:hover{background:#912018;} .ds-btn-danger:focus-visible{outline:2px solid var(--gold-600,#957637);outline-offset:2px;} .ds-btn-danger:disabled{background:var(--surface-2,#f2f4f7);color:var(--ink-400,#6b7280);border:1px solid var(--ink-250,#8a909c);cursor:not-allowed;}"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Campo de texto y Select (ui.field); 32 px en barras de filtro (ui.fieldSm).",
+      "html": "<label class=\"ds-field-wrap\"><span class=\"ds-field-label\">Motivo</span><input class=\"ds-field\" placeholder=\"Ej.: cortesía por retraso\"></label>",
+      "css": ".ds-field-wrap{display:flex;flex-direction:column;gap:4px;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-field-label{font-size:12px;font-weight:500;color:var(--ink-800,#3a3f4a);} .ds-field{height:36px;padding:0 12px;border:1px solid var(--ink-250,#8a909c);border-radius:6px;background:var(--surface,#fff);color:var(--ink-950,#1a1d23);font-size:14px;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;transition:border-color 120ms cubic-bezier(0.2,0,0,1),box-shadow 120ms cubic-bezier(0.2,0,0,1);} .ds-field::placeholder{color:var(--ink-400,#6b7280);} .ds-field:hover{border-color:var(--ink-400,#6b7280);} .ds-field:focus{outline:none;border-color:var(--gold-600,#957637);box-shadow:0 0 0 2px rgba(149,118,55,0.25);} .ds-field:disabled{background:var(--surface-2,#f2f4f7);color:var(--ink-400,#6b7280);}"
+    },
+    {
+      "name": "Barra lateral oscura",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Navegación agrupada sobre nav-bg; el activo lleva fondo más claro y la raya oro (components/nav-links.tsx).",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Secciones\"><a class=\"ds-nav-item ds-nav-active\" href=\"#\" aria-current=\"page\"><span class=\"ds-nav-bar\"></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"/><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg>Inicio</a><p class=\"ds-nav-group\">Operación</p><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/></svg>Clientes</a></nav>",
+      "css": ".ds-nav{background:var(--nav-bg,#15171c);padding:12px;width:240px;display:flex;flex-direction:column;gap:2px;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-nav-group{margin:16px 0 4px;padding:0 12px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--nav-muted,#a3a9b5);} .ds-nav-item{position:relative;display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(236,238,242,0.85);text-decoration:none;transition:background-color 120ms cubic-bezier(0.2,0,0,1),color 120ms cubic-bezier(0.2,0,0,1);} .ds-nav-item svg{color:var(--nav-muted,#a3a9b5);} .ds-nav-item:hover{background:var(--nav-hover,#20232a);color:#fff;} .ds-nav-item:focus-visible{outline:2px solid var(--nav-accent,#d4b578);outline-offset:2px;} .ds-nav-active{background:var(--nav-active,#2a2e37);color:#fff;} .ds-nav-active svg{color:var(--nav-accent,#d4b578);} .ds-nav-bar{position:absolute;top:8px;bottom:8px;left:0;width:2px;border-radius:9999px;background:var(--nav-accent,#d4b578);}"
+    },
+    {
+      "name": "Chip de excepción",
+      "kind": "chip",
+      "refersTo": "badge-warn",
+      "description": "Badge con ícono y texto, solo cuando el estado no es el normal (Badge, components/ui.tsx).",
+      "html": "<span class=\"ds-badge ds-badge-warn\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg>Sin confirmar</span> <span class=\"ds-badge ds-badge-ok\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg>Pagada</span> <span class=\"ds-badge ds-badge-neutral\">Staff</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:9999px;font-size:12px;font-weight:500;white-space:nowrap;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-badge-warn{background:var(--warn-100,#fffaeb);color:var(--warn-700,#93370d);box-shadow:inset 0 0 0 1px var(--warn-300,#fedf89);} .ds-badge-ok{background:var(--ok-100,#ecfdf3);color:var(--ok-700,#067647);box-shadow:inset 0 0 0 1px var(--ok-300,#abefc6);} .ds-badge-neutral{background:var(--surface-2,#f2f4f7);color:var(--ink-800,#3a3f4a);box-shadow:inset 0 0 0 1px var(--ink-150,#e4e7ec);}"
+    },
+    {
+      "name": "Franja de cifras",
+      "kind": "card",
+      "refersTo": "figure-lg",
+      "description": "Cifras en un solo panel con divisores de 1 px, no tarjetas iguales (FigureStrip, components/kpi.tsx).",
+      "html": "<section class=\"ds-strip\"><div class=\"ds-fig\"><p class=\"ds-fig-label\">Dinero recibido del mes</p><p class=\"ds-fig-value\">$12,480.00</p><p class=\"ds-fig-hint\">IVA incluido.</p></div><div class=\"ds-fig\"><p class=\"ds-fig-label\">Ventas del mes</p><p class=\"ds-fig-value\">8</p></div><div class=\"ds-fig\"><p class=\"ds-fig-label\">Ticket promedio</p><p class=\"ds-fig-value\"><span aria-hidden=\"true\" class=\"ds-nil\">—</span></p></div></section>",
+      "css": ".ds-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--ink-150,#e4e7ec);border:1px solid var(--ink-150,#e4e7ec);border-radius:8px;overflow:hidden;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-fig{background:var(--surface,#fff);padding:16px 20px;} .ds-fig p{margin:0;} .ds-fig-label{font-size:13px;color:var(--ink-600,#545a66);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .ds-fig .ds-fig-value{margin-top:4px;font-size:28px;line-height:36px;font-weight:600;letter-spacing:-0.015em;font-variant-numeric:tabular-nums;color:var(--ink-950,#1a1d23);} .ds-fig .ds-fig-hint{margin-top:4px;font-size:12px;color:var(--ink-600,#545a66);} .ds-nil{color:var(--ink-600,#545a66);}"
+    },
+    {
+      "name": "Tabla",
+      "kind": "custom",
+      "refersTo": "table-head",
+      "description": "La tabla es el lienzo: encabezado gris de 40 px, montos a la derecha, hover de fila (Table, components/ui.tsx).",
+      "html": "<section class=\"ds-table-wrap\"><div class=\"ds-table-head\"><h2>Últimas ventas</h2><a href=\"#\">Ver todas</a></div><table class=\"ds-table\"><thead><tr><th>Cliente</th><th class=\"ds-r\">Total (IVA incluido)</th></tr></thead><tbody><tr><td><span class=\"ds-name\">Ana López</span><span class=\"ds-mail\">ana@correo.mx</span></td><td class=\"ds-r\">$999.00</td></tr></tbody></table></section>",
+      "css": ".ds-table-wrap{border:1px solid var(--ink-150,#e4e7ec);border-radius:8px;background:var(--surface,#fff);overflow:hidden;font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-table-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ink-150,#e4e7ec);} .ds-table-head h2{margin:0;font-size:16px;font-weight:600;color:var(--ink-950,#1a1d23);} .ds-table-head a{font-size:13px;font-weight:500;color:var(--gold-800,#6a5938);text-decoration:none;text-underline-offset:3px;} .ds-table-head a:hover{text-decoration:underline;} .ds-table{width:100%;border-collapse:collapse;font-size:14px;color:var(--ink-950,#1a1d23);} .ds-table th{height:40px;padding:0 12px;text-align:left;font-size:12px;font-weight:500;color:var(--ink-600,#545a66);background:var(--surface-2,#f2f4f7);border-bottom:1px solid var(--ink-150,#e4e7ec);} .ds-table td{padding:10px 12px;} .ds-name{display:block;font-weight:500;} .ds-mail{display:block;font-size:12px;color:var(--ink-600,#545a66);} .ds-table tbody tr{transition:background-color 120ms cubic-bezier(0.2,0,0,1);} .ds-table tbody tr:hover{background:rgba(242,244,247,0.5);} .ds-table .ds-r{text-align:right;font-variant-numeric:tabular-nums;}"
+    },
+    {
+      "name": "Cómo se calcula",
+      "kind": "custom",
+      "description": "Definiciones plegadas bajo la cifra o tabla que explican; máximo dos por página (HowCalculated, components/ui.tsx).",
+      "html": "<details class=\"ds-how\"><summary><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 16v-4\"/><path d=\"M12 8h.01\"/></svg>Cómo se calcula<span class=\"ds-how-chev\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg></span></summary><div class=\"ds-how-body\"><p>Dinero recibido = compras cobradas del mes, IVA incluido.</p></div></details>",
+      "css": ".ds-how{font-size:13px;color:var(--ink-600,#545a66);font-family:Inter,ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;} .ds-how summary{display:flex;width:fit-content;align-items:center;gap:6px;padding:2px 0;border-radius:4px;font-weight:500;cursor:pointer;list-style:none;transition:color 120ms cubic-bezier(0.2,0,0,1);} .ds-how summary::-webkit-details-marker{display:none;} .ds-how summary:hover{color:var(--ink-950,#1a1d23);} .ds-how summary:focus-visible{outline:2px solid var(--gold-600,#957637);outline-offset:2px;} .ds-how-chev{display:inline-flex;transition:transform 120ms cubic-bezier(0.2,0,0,1);} .ds-how[open] .ds-how-chev{transform:rotate(90deg);} .ds-how-body{margin-top:6px;padding-left:20px;max-width:75ch;} .ds-how-body p{margin:0;} @media (prefers-reduced-motion: reduce){.ds-how-chev{transition:none;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La trastienda en orden",
+    "overview": "El panel juega en serio el estándar de las herramientas de operación (nivel Stripe Dashboard, Linear, Shopify Polaris) con una sola desviación pedida por el usuario: la barra de menú lateral oscura. El área de trabajo es gris muy claro, las superficies son blancas con divisores finos y radios pequeños, y la tabla es el lienzo. No hay decoración: la jerarquía sale del peso tipográfico, de las cifras tabulares y de dónde aparece (o no aparece) el color.\n\nEs una interfaz densa para quien la usa a diario. El color se gana: el oro de Celebraloo, oscurecido para pasar contraste, es el único acento y marca acción primaria, ítem activo, enlaces, foco y selección. Los cuatro colores de estado solo aparecen cuando algo pide atención o confirma algo real, y siempre con ícono o texto. Hoy el vacío es la vista más común, así que el vacío está diseñado como un sistema (raya `Nil`, mensajes de una línea, tablas plegadas) y nunca parece un error.\n\nSe rechaza explícitamente el panel anterior: tarjetas blancas iguales sobre crema y el KPI con ícono en círculo. Las cifras viven en una franja con divisores, no en tarjetas sueltas.",
+    "keyCharacteristics": [
+      "Barra lateral oscura de 240 px (`#15171c`) contra un área de trabajo clara (`#f6f7f9`).",
+      "Un solo acento: oro `#6a5938` (6.8:1 sobre blanco); el oro claro de marca solo sobre la barra oscura.",
+      "Plano: bordes de 1 px `#e4e7ec`, casi sin sombras.",
+      "Inter con cifras tabulares; escala corta de 11 a 28 px.",
+      "Movimiento corto y funcional (120 a 200 ms, `cubic-bezier(0.2, 0, 0, 1)`), nada al hacer scroll.",
+      "Cada acción sensible pide motivo y queda firmada en Actividad."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "El oro es para la acción primaria, el ítem activo, los enlaces, el foco y la selección. Nunca para un badge de categoría rutinaria (`.bunshin/decisions/round-1.md`, R4).",
+        "section": "colors"
+      },
+      {
+        "name": "The Earned Color Rule",
+        "body": "Verde, ámbar, rojo y azul solo cuando el estado pide atención o confirma algo real, y siempre con ícono o texto. Un conteo en cero va en tinta, sin color (`components/ui.tsx`, `Badge` y `TONE_ICON`).",
+        "section": "colors"
+      },
+      {
+        "name": "The Light Gold Stays Dark Rule",
+        "body": "El oro claro (`#c8a96a`, `#d4b578`) solo vive sobre la barra oscura; sobre blanco el oro es siempre `gold-800`.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Money Rule",
+        "body": "Toda cifra, monto, conteo y fecha en columna lleva `tabular-nums`; los montos se alinean a la derecha (`Table` prop `align`).",
+        "section": "typography"
+      },
+      {
+        "name": "The Same Money Size Rule",
+        "body": "La cifra principal de dinero de una página usa el tamaño `lg` en todas las páginas; `md` solo para la segunda fila. Las etiquetas de cifra caben en una línea (`truncate` con `title`) para compartir línea base (`components/kpi.tsx`, `FigureBody`; R17).",
+        "section": "typography"
+      },
+      {
+        "name": "The No Eyebrow Rule",
+        "body": "Las mayúsculas espaciadas existen solo en los títulos de grupo de la barra lateral. En el área de trabajo no hay etiquetas sobre el título.",
+        "section": "typography"
+      },
+      {
+        "name": "The Primary Top Right Rule",
+        "body": "La acción primaria de cada página va en la esquina superior derecha de su encabezado (`PageTitle` prop `actions`).",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat By Default Rule",
+        "body": "Superficies, tarjetas, cifras y tablas no llevan sombra. Una sombra solo marca algo que flota (tooltip) o una opción elegida dentro de un control.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Haz** que cada color salga de un token de `app/globals.css`; los componentes usan las clases `ink-*`, `gold-*`, `ok/warn/danger/info-*` y `nav-*`.",
+      "**Haz** el texto en oro siempre en `gold-800` (6.8:1) y deja `gold-600` para bordes, anillos y foco (`app/globals.css`).",
+      "**Haz** los botones y campos con `ui.*` y `Select` de `components/ui.tsx`; los chicos (32 px) en barras de filtro y tablas.",
+      "**Haz** el subtítulo de `PageTitle` de una sola línea y lleva las fórmulas a `HowCalculated`, máximo dos por página (`components/ui.tsx`).",
+      "**Haz** todo vacío con `<Nil />` (`components/ui.tsx`) y todo `<summary>` con chevron que gira, sin triángulo nativo.",
+      "**Haz** las cifras en una `FigureStrip` con divisores y la cifra principal de dinero en tamaño `lg` (`components/kpi.tsx`).",
+      "**Haz** que cada tabla declare `mobileHide` para quedarse con nombre y lo que decide a 390 px (`components/ui.tsx`, `Table`).",
+      "**Haz** que toda acción sensible pase por `ConfirmAction` con motivo de 3 caracteres o más (`components/confirm-action.tsx`).",
+      "**Haz** que la acción primaria viva en `actions` de `PageTitle`, arriba a la derecha (`components/ui.tsx`).",
+      "**Haz** los estados con ícono y texto, nunca solo color (`components/ui.tsx`, `Badge`; `components/kpi.tsx`, `Delta`).",
+      "**Haz** las transiciones en 120 a 200 ms con `--ease-out`, y las entradas solo con `.animate-enter` (`app/globals.css`)."
+    ],
+    "donts": [
+      "**No hagas** un hex suelto en un componente (`AGENTS.md`); si falta un color, se agrega como token en `app/globals.css`.",
+      "**No hagas** tarjetas blancas iguales para cada KPI ni el KPI con ícono en círculo (`components/kpi.tsx`, comentario de `FigureStrip`).",
+      "**No hagas** chips para el estado normal de cada fila (`app/(admin)/clientes/page.tsx`, `app/(admin)/usuarios/page.tsx`).",
+      "**No hagas** badges de categoría rutinaria en oro ni en color de estado; van en tono `neutral` (`components/ui.tsx`, `Badge`).",
+      "**No hagas** botones deshabilitados con opacidad sobre oro o rojo; el deshabilitado es el estado neutro de `ui.*` (`components/ui.tsx`).",
+      "**No hagas** una acción destructiva repetida en cada fila; vive en la ficha, al final en móvil (`app/(admin)/eventos/[id]/page.tsx`, `max-lg:order-last`).",
+      "**No hagas** \"Sin dato\", \"—\" o \"-\" escritos a mano, ni en monoespaciada (`components/ui.tsx`, `Nil`).",
+      "**No hagas** claves internas (slugs, claves de producto) como texto visible; van en `title` (`.bunshin/decisions/round-1.md`, R2).",
+      "**No hagas** sombras en superficies; solo el segmento elegido y las capas flotantes (`components/ui.tsx`, `Segmented`; `components/metric-chart.tsx`).",
+      "**No hagas** el oro claro (`#c8a96a`, `#d4b578`) sobre fondo blanco (`components/ui.tsx`, `BrandMark`; `components/nav-links.tsx`).",
+      "**No hagas** animaciones al hacer scroll, entradas por sección, rebote ni parallax (`app/globals.css`).",
+      "**No hagas** etiquetas en mayúsculas espaciadas fuera de los títulos de grupo de la barra (`components/nav-links.tsx`)."
+    ]
+  }
+}

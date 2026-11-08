@@ -17,12 +17,17 @@ export function formatInt(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : new Intl.NumberFormat("es-MX").format(value);
 }
 
-/** "1,990.5" → 199050. Solo con strings: nunca pasa por un float. null si no es válido. */
+/**
+ * "1,990.5" → 199050. Solo con strings: nunca pasa por un float. null si no es válido.
+ * La coma solo vale como separador de miles en grupos de 3: "1,50" es ambiguo
+ * (¿$1.50 o $150?) y se rechaza. Prueba: node lib/format.check.mjs
+ */
 export function parsePesosToCents(raw: string): number | null {
-  const clean = raw.replace(/[$,\s]/g, "");
-  const match = /^(\d{1,9})(?:\.(\d{1,2}))?$/.exec(clean);
+  const match = /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(raw.replace(/[$\s]/g, ""));
   if (!match) return null;
-  return Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
+  const pesos = match[1].replace(/,/g, "");
+  if (pesos.length > 9) return null;
+  return Number(pesos) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
 }
 
 /** 199050 → "1990.50" (para rellenar un input). */
@@ -100,6 +105,27 @@ export const EVENT_STATUS: Record<string, { label: string; tone: "neutral" | "go
   archivado: { label: "Archivado", tone: "neutral" },
 };
 
+/** events.event_type (check de 20260806191955_core_entities). */
+export const EVENT_TYPE: Record<string, string> = {
+  boda: "Boda",
+  xv: "XV años",
+  bautizo: "Bautizo",
+  cumpleanos: "Cumpleaños",
+  graduacion: "Graduación",
+  corporativo: "Corporativo",
+  otro: "Otro",
+};
+
+export const MEMBER_ROLE: Record<string, string> = {
+  owner: "Dueño",
+  admin: "Admin",
+  member: "Miembro",
+  hostess: "Hostess",
+};
+
+/** El dueño es events.created_by; queda en null cuando se borra su cuenta. */
+export const NO_OWNER = "Sin dueño (cuenta borrada)";
+
 export const EXPENSE_CATEGORIES: Record<string, string> = {
   tecnologia: "Tecnología / infraestructura",
   desarrollo: "Desarrollo",
@@ -114,6 +140,11 @@ export const EXPENSE_CATEGORIES: Record<string, string> = {
   otros: "Otros",
   retiro: "Retiro (sale de caja, no es gasto operativo)",
 };
+
+/** Fechas aceptadas para un gasto: uno de 1900 movería el inicio del acumulado de Finanzas (min(expense_date)). */
+export function expenseDateRange(): { min: string; max: string } {
+  return { min: "2020-01-01", max: addDays(todayMx(), 366) };
+}
 
 const pctFormat = (digits: number, sign: boolean) =>
   new Intl.NumberFormat("es-MX", {
@@ -133,13 +164,17 @@ export function formatDeltaBps(bps: number): string {
   return pctFormat(Math.abs(bps) < 1000 ? 1 : 0, true).format(bps / 10000);
 }
 
-/** [desde, hasta) en días → "1–5 oct" o "28 sep–5 oct". */
+/** [desde, hasta) en días → "1–5 oct", "28 sep–5 oct" o, si cruza de año, "28 dic 2025–5 ene 2026". */
 export function dayRangeLabel(from: string, toExclusive: string): string {
   const last = addDays(toExclusive, -1);
+  const withYear = from.slice(0, 4) !== last.slice(0, 4);
   const fmt = (iso: string, withMonth: boolean) =>
-    new Intl.DateTimeFormat("es-MX", { day: "numeric", ...(withMonth ? { month: "short" } : {}), timeZone: "UTC" }).format(
-      new Date(`${iso}T12:00:00Z`)
-    );
+    new Intl.DateTimeFormat("es-MX", {
+      day: "numeric",
+      ...(withMonth ? { month: "short" } : {}),
+      ...(withYear ? { year: "numeric" } : {}),
+      timeZone: "UTC",
+    }).format(new Date(`${iso}T12:00:00Z`));
   if (from === last) return fmt(from, true);
   return from.slice(0, 7) === last.slice(0, 7) ? `${fmt(from, false)}–${fmt(last, true)}` : `${fmt(from, true)}–${fmt(last, true)}`;
 }
@@ -149,7 +184,7 @@ export const ADMIN_ACTION_LABELS: Record<string, string> = {
   "role.change": "Cambio de rol",
   "staff.role": "Cambio de rol",
   "catalog.update": "Catálogo editado",
-  "free_plan.reset": "Plan gratis devuelto",
+  "free_plan.reset": "Prueba gratis devuelta",
   "event.unlock": "Edición desbloqueada",
   "event.relock": "Edición bloqueada de nuevo",
   "event.delete": "Evento borrado",
@@ -162,6 +197,7 @@ export const ADMIN_ACTION_LABELS: Record<string, string> = {
   "account.delete": "Cuenta borrada",
   "account.resend_confirmation": "Confirmación de correo reenviada",
   "account.view_as": "Vista como usuario",
+  "account.view_as_end": "Fin de la vista como usuario",
   "admin_expenses.insert": "Gasto registrado",
   "admin_expenses.update": "Gasto editado",
   "admin_expenses.delete": "Gasto borrado",
@@ -172,6 +208,12 @@ export const ADMIN_ACTION_LABELS: Record<string, string> = {
   "admin_set_aside_rules.insert": "Apartado creado",
   "admin_set_aside_rules.update": "Apartado editado",
   "admin_set_aside_rules.delete": "Apartado borrado",
+  "admin_notes.insert": "Nota agregada",
+  "admin_notes.delete": "Nota borrada",
+  "admin_promotions.insert": "Promoción creada",
+  "admin_promotions.update": "Promoción editada",
+  "admin_promotions.delete": "Promoción borrada",
+  "stripe.product_link": "Producto de Stripe ligado",
 };
 
 /** ISO → "YYYY-MM-DDTHH:mm" en hora de Ciudad de México (para un input datetime-local). */

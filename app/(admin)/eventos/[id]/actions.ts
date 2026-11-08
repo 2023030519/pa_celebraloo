@@ -77,7 +77,7 @@ async function guard(
   return { reason: cleanReason };
 }
 
-/** Activa o fija el valor de una capability. Los booleanos solo se activan: para apagar, clearCapability. */
+/** Excepción: fija el valor de una capability; lo que el cliente compre después se suma encima. Los booleanos solo se activan. */
 export async function setCapability(
   eventId: string,
   capabilityKey: string,
@@ -98,7 +98,7 @@ export async function setCapability(
   return { ok: true, message: `${capability.name}: actualizado.` };
 }
 
-/** Quita el override. Si una compra lo otorga, vuelve a ese valor; si no, se apaga. */
+/** Quita la excepción y los complementos del panel de esa capability: regresa al valor del plan y de lo comprado. */
 export async function clearCapability(eventId: string, capabilityKey: string, reason: string): Promise<ActionResult> {
   const checked = await guard(eventId, reason);
   if ("error" in checked) return { ok: false, message: checked.error };
@@ -114,8 +114,8 @@ export async function clearCapability(eventId: string, capabilityKey: string, re
 
 /**
  * Plan, complemento y acceso total van en UNA transacción
- * (admin_assign_to_event): mismos valores que antes, sin quedar a medias, y
- * con registro en admin_event_assignments y admin_audit_log.
+ * (admin_assign_to_event): se combinan igual que una compra (todo suma), sin
+ * quedar a medias, y con registro en admin_event_assignments y admin_audit_log.
  */
 async function assign(
   eventId: string,
@@ -141,8 +141,9 @@ async function assign(
 }
 
 /**
- * Deja el evento con los valores EXACTOS del plan (también baja límites).
- * Salir de Tour quita choose_plan. Con removeOthers, apaga lo que el plan no incluye.
+ * Da el plan como una compra: gana el más alto contra lo comprado y reemplaza el
+ * plan que el panel dio antes. Salir de Tour quita choose_plan. Con removeOthers,
+ * revoca lo que dio el panel fuera del plan.
  */
 export async function applyPlan(
   eventId: string,
@@ -157,7 +158,7 @@ export async function applyPlan(
   return assign(eventId, "plan", plan.key, checked.reason, `Plan ${plan.name}`, removeOthers);
 }
 
-/** Suma un complemento: solo sube valores, nunca baja un límite que ya tenía. */
+/** Suma un complemento igual que una compra (+50 invitados suma 50). */
 export async function applyAddon(eventId: string, addonKey: string, reason: string): Promise<ActionResult> {
   const checked = await guard(eventId, reason, true);
   if ("error" in checked) return { ok: false, message: checked.error };
@@ -166,7 +167,7 @@ export async function applyAddon(eventId: string, addonKey: string, reason: stri
   return assign(eventId, "complemento", addon.key, checked.reason, addon.name);
 }
 
-/** Todo: el plan más alto (Atelier) + todos los complementos activos, con el mayor valor de cada uno. */
+/** Todo: el plan Atelier + los complementos activos que Atelier no trae. */
 export async function grantEverything(eventId: string, reason: string): Promise<ActionResult> {
   const checked = await guard(eventId, reason, true);
   if ("error" in checked) return { ok: false, message: checked.error };

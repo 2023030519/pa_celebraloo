@@ -1,34 +1,69 @@
 @import "tailwindcss";
 
-/* Paleta de marca de Celebraloo (tinta, oro, crema) en versión de panel interno. */
+/* Panel estándar (nivel Stripe, Linear, Polaris) con la barra lateral oscura:
+   área de trabajo gris muy claro, superficies blancas, un solo acento (el oro
+   de Celebraloo). Los nombres de los tokens no cambian: todo el panel los usa. */
+/* Tema: claro, oscuro o el del sistema (Configuración › Apariencia, cookie "theme" →
+   data-theme en <html>). Cada token lleva light-dark(claro, oscuro); la barra lateral
+   ya es oscura y no cambia. */
 :root {
-  --paper: #f3eee6;
-  --surface: #fffdf8;
-  --surface-2: #efe8dc;
-  --ink-950: #3a3434;
-  --ink-800: #4e4747;
-  --ink-600: #6a6363;
-  --ink-400: #6b645e;
-  --ink-250: #cfc6b8;
-  --ink-150: #d9d0c4;
-  --gold-800: #6a5938;
-  --gold-600: #c8a96a;
-  --gold-100: #f3ead6;
+  color-scheme: light dark;
+  --paper: light-dark(#f6f7f9, #0f1115);
+  --surface: light-dark(#ffffff, #171a20);
+  --surface-2: light-dark(#f2f4f7, #1f232b);
+  --ink-950: light-dark(#1a1d23, #eceef2);
+  --ink-800: light-dark(#3a3f4a, #c9cdd5);
+  --ink-600: light-dark(#545a66, #a3a9b5);
+  --ink-400: light-dark(#6b7280, #8a909c);
+  --ink-250: light-dark(#8a909c, #626a78); /* borde de campos y botones: 3.2:1 sobre blanco (mínimo de UI) */
+  --ink-150: light-dark(#e4e7ec, #2c3038);
+  /* Oro: 800 para texto, enlaces y botón primario (6.8:1 sobre blanco); 600
+     para bordes de foco y selección (3:1 mínimo de UI); 100 para el fondo de
+     lo seleccionado. El oro claro de marca solo va sobre la barra oscura.
+     900 = hover del botón primario; 200 = aro del chip dorado. */
+  --gold-900: light-dark(#574828, #e6cd98);
+  --gold-800: light-dark(#6a5938, #d4b578);
+  --gold-600: light-dark(#957637, #b8954f);
+  --gold-200: light-dark(#eadfc6, #5a4a2a);
+  --gold-100: light-dark(#f7f1e4, #2a2418);
   /* Estados: fondo tenue (100), borde (300) y texto/ícono (700). Verde =
      correcto, amarillo = atención, rojo = problema, azul = información.
-     Nunca solos: siempre con ícono o texto. Texto 700 sobre 100 ≥ 4.5:1. */
-  --ok-700: #2f6b3a;
-  --ok-300: #a9cfa9;
-  --ok-100: #e3f0e3;
-  --warn-700: #7a5200;
-  --warn-300: #e6c77a;
-  --warn-100: #fbf1d6;
-  --danger-700: #a3312a;
-  --danger-300: #e5aaa4;
-  --danger-100: #f8e3e1;
-  --info-700: #2f5f80;
-  --info-300: #a8c6dc;
-  --info-100: #e2edf4;
+     Nunca solos: siempre con ícono o texto. Texto 700 sobre 100 ≥ 4.5:1.
+     800 = hover de los botones llenos de ese estado. */
+  --ok-800: light-dark(#05603a, #a6efc6);
+  --ok-700: light-dark(#067647, #75e0a7);
+  --ok-300: light-dark(#abefc6, #0b6b42);
+  --ok-100: light-dark(#ecfdf3, #0c2a1d);
+  --warn-700: light-dark(#93370d, #fec84b);
+  --warn-300: light-dark(#fedf89, #7a4a0e);
+  --warn-100: light-dark(#fffaeb, #2b1f08);
+  --danger-800: light-dark(#912018, #fecdca);
+  --danger-700: light-dark(#b42318, #fda29b);
+  --danger-300: light-dark(#fecdca, #7a271a);
+  --danger-100: light-dark(#fef3f2, #2d1311);
+  --info-700: light-dark(#175cd3, #84caff);
+  --info-300: light-dark(#b2ddff, #1d4f99);
+  --info-100: light-dark(#eff8ff, #0d1f3d);
+  /* Barra lateral oscura (decisión del usuario, 8 nov 2026). */
+  --nav-bg: #15171c;
+  --nav-hover: #20232a;
+  --nav-active: #2a2e37;
+  --nav-rule: #2c3038;
+  --nav-fg: #eceef2;
+  --nav-muted: #a3a9b5;
+  --nav-accent: #d4b578;
+  /* Movimiento: cortos y funcionales (contrato de dirección). */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 200ms;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -41,22 +76,37 @@
   --color-ink-400: var(--ink-400);
   --color-ink-250: var(--ink-250);
   --color-ink-150: var(--ink-150);
+  --color-gold-900: var(--gold-900);
   --color-gold-800: var(--gold-800);
   --color-gold-600: var(--gold-600);
+  --color-gold-200: var(--gold-200);
   --color-gold-100: var(--gold-100);
+  --color-ok-800: var(--ok-800);
   --color-ok-700: var(--ok-700);
   --color-ok-300: var(--ok-300);
   --color-ok-100: var(--ok-100);
   --color-warn-700: var(--warn-700);
   --color-warn-300: var(--warn-300);
   --color-warn-100: var(--warn-100);
+  --color-danger-800: var(--danger-800);
   --color-danger-700: var(--danger-700);
   --color-danger-300: var(--danger-300);
   --color-danger-100: var(--danger-100);
   --color-info-700: var(--info-700);
   --color-info-300: var(--info-300);
   --color-info-100: var(--info-100);
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-nav-bg: var(--nav-bg);
+  --color-nav-hover: var(--nav-hover);
+  --color-nav-active: var(--nav-active);
+  --color-nav-rule: var(--nav-rule);
+  --color-nav-fg: var(--nav-fg);
+  --color-nav-muted: var(--nav-muted);
+  --color-nav-accent: var(--nav-accent);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ease-out: var(--ease-out);
+  /* transition-* sin duración ni curva explícitas usan las de la casa. */
+  --default-transition-timing-function: var(--ease-out);
+  --default-transition-duration: var(--dur-fast);
 }
 
 body {
@@ -64,8 +114,96 @@ body {
   color: var(--ink-950);
 }
 
+::selection {
+  background: var(--gold-100);
+  color: var(--ink-950);
+}
+
+/* Foco visible y consistente en todo control (teclado). En capa base para que
+   las utilidades (focus-visible:outline-nav-accent, focus:outline-none) ganen. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--gold-600);
+    outline-offset: 2px;
+  }
+}
+
+/* Única entrada del contrato: opacidad + 4px en 160 ms (menús y paneles). */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.animate-enter {
+  animation: enter var(--dur-base) var(--ease-out) both;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Móvil (debajo de md = 48rem). Escritorio no cambia. */
+@media (width < 48rem) {
+  /* M4: las anclas de SectionNav no quedan debajo del encabezado fijo (56 px). */
+  main [id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+/* M2: <Table mobileCards> debajo de sm (40rem). Sin capa a propósito: gana al padding y la
+   alineación que cada celda trae para escritorio. data-lead = posición (1…10) de la primera
+   celda visible, que va a la izquierda; las demás visibles se apilan a la derecha. */
+@media (width < 40rem) {
+  .table-cards,
+  .table-cards tbody {
+    display: block;
+  }
+  .table-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .table-cards tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.75rem;
+    align-items: start;
+    padding: 0.75rem 1rem;
+  }
+  .table-cards tbody > tr > * {
+    grid-column: 2;
+    padding: 0;
+    text-align: right;
+    justify-self: end;
+  }
+  .table-cards[data-lead="1"] tbody > tr > :nth-child(1),
+  .table-cards[data-lead="2"] tbody > tr > :nth-child(2),
+  .table-cards[data-lead="3"] tbody > tr > :nth-child(3),
+  .table-cards[data-lead="4"] tbody > tr > :nth-child(4),
+  .table-cards[data-lead="5"] tbody > tr > :nth-child(5),
+  .table-cards[data-lead="6"] tbody > tr > :nth-child(6),
+  .table-cards[data-lead="7"] tbody > tr > :nth-child(7),
+  .table-cards[data-lead="8"] tbody > tr > :nth-child(8),
+  .table-cards[data-lead="9"] tbody > tr > :nth-child(9),
+  .table-cards[data-lead="10"] tbody > tr > :nth-child(10) {
+    grid-column: 1;
+    grid-row: span 3;
+    text-align: left;
+    justify-self: stretch;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

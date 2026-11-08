@@ -1,20 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, CircleSlash, Plus } from "lucide-react";
 import { can, requirePermission } from "@/lib/auth/require-admin";
 import { getSubscriptions, type Subscription } from "@/lib/data/admin";
 import { EXPENSE_CATEGORIES, formatDay, formatInt, formatMxn } from "@/lib/format";
-import { Badge, Card, PageTitle, Table, cn } from "@/components/ui";
+import { Badge, HowCalculated, PageTitle, Table, cn, ui, zeroClass } from "@/components/ui";
 import { DataError } from "@/components/finance";
-import { KpiTile } from "@/components/kpi";
 import { SubscriptionStatusAction } from "@/components/subscription-status-action";
 
 function NextCharge({ item }: { item: Subscription }) {
-  if (item.status === "cancelado") return <span className="text-ink-600">—</span>;
+  if (item.status === "cancelado") return <span className="text-ink-600">Sin cobros</span>;
   const soon = item.periodicity === "anual" && item.days_to_next <= 15;
   return (
     <span className="flex flex-col">
       <span className="whitespace-nowrap">{formatDay(item.next_charge_date)}</span>
-      <span className={cn("flex items-center gap-1 text-xs", soon ? "font-semibold text-info-700" : "text-ink-600")}>
+      <span className={cn("flex items-center gap-1 text-xs whitespace-nowrap", soon ? "font-medium text-info-700" : "text-ink-600")}>
         {soon && <CalendarClock size={12} aria-hidden="true" />}
         {item.days_to_next === 0 ? "Hoy" : item.days_to_next === 1 ? "Mañana" : `En ${formatInt(item.days_to_next)} días`}
         {soon && " · renovación anual"}
@@ -22,6 +22,10 @@ function NextCharge({ item }: { item: Subscription }) {
     </span>
   );
 }
+
+export const metadata: Metadata = { title: "Suscripciones" };
+
+const right = (text: string) => <span className="block text-right">{text}</span>;
 
 export default async function SubscriptionsPage() {
   const admin = await requirePermission("gastos.read");
@@ -46,86 +50,128 @@ export default async function SubscriptionsPage() {
   return (
     <>
       <PageTitle
+        breadcrumb={[{ href: "/gastos", label: "Gastos" }]}
         title="Suscripciones y servicios"
-        subtitle={
-          <>
-            Gastos que se repiten. Cada cobro se registra solo como gasto en su fecha, así cada mes refleja su costo real.{" "}
-            <Link href="/gastos" className="font-semibold text-gold-800 hover:underline">
-              Ver gastos
-            </Link>
-          </>
-        }
-        actions={
+        subtitle={`Gastos que se repiten · ${formatInt(active.length)} ${active.length === 1 ? "activa" : "activas"}`}
+        primaryAction={
           editable && (
-            <Link
-              href="/gastos/suscripciones/nueva"
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink-950 px-4 font-semibold text-surface hover:bg-ink-800"
-            >
+            <Link href="/gastos/suscripciones/nueva" className={ui.buttonPrimary}>
               <Plus size={16} aria-hidden="true" /> Nueva suscripción
             </Link>
           )
         }
       />
 
-      <div className="mb-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <KpiTile
-          label="Costo mensual equivalente"
-          value={formatMxn(monthly)}
-          hint={`${formatInt(active.length)} activas · los anuales cuentan como su doceava parte.`}
-          emphasis
-        />
-        <Card title="Próximas renovaciones (30 días)">
+      {/* Cifra y próximas renovaciones en un solo panel con divisor, no tarjeta + tarjeta. */}
+      <section
+        aria-label="Resumen"
+        className="mb-6 grid overflow-hidden rounded-lg border border-ink-150 bg-surface md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+      >
+        <div className="border-b border-ink-150 px-5 py-4 md:border-r md:border-b-0">
+          <p className="text-[13px] font-medium text-ink-600">Costo mensual equivalente</p>
+          <p className={cn("mt-1 text-[22px] leading-8 font-semibold sm:text-[28px] sm:leading-9 tracking-[-0.015em] tabular-nums", zeroClass(monthly, "text-ink-950"))}>{formatMxn(monthly)}</p>
+          <p className="mt-1 text-xs text-ink-600">IVA incluido</p>
+          <HowCalculated>
+            <p>Los anuales cuentan como su doceava parte.</p>
+            <p>Cada cobro se registra solo como gasto en su fecha, así cada mes refleja su costo real.</p>
+          </HowCalculated>
+        </div>
+        <div className="px-5 py-4">
+          <h2 className="text-base font-semibold text-ink-950">Próximas renovaciones (30 días)</h2>
           {upcoming.length === 0 ? (
-            <p className="text-ink-600">No hay cobros en los próximos 30 días.</p>
+            <p className="mt-2 text-sm text-ink-600">No hay cobros en los próximos 30 días.</p>
           ) : (
-            <ul className="flex flex-col gap-1.5">
+            <ul className="mt-2 divide-y divide-ink-150 text-sm">
               {upcoming.map((item) => (
-                <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium">
+                <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1.5">
+                  <span className="min-w-0 font-medium text-ink-950">
                     {item.concept}
-                    <span className="ml-1 text-xs font-normal text-ink-600">({item.periodicity})</span>
+                    <span className="ml-1.5 text-xs font-normal text-ink-600">{item.periodicity === "mensual" ? "Mensual" : "Anual"}</span>
                   </span>
-                  <span className="tabular-nums text-ink-800">
-                    {formatMxn(item.total_cents)} · {formatDay(item.next_charge_date)}
+                  <span className="text-ink-800 tabular-nums">
+                    {formatDay(item.next_charge_date)} · <span className="font-medium text-ink-950">{formatMxn(item.total_cents)}</span>
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </Card>
-      </div>
+        </div>
+      </section>
 
-      <Table
-        head={["Servicio", "Categoría", "Se cobra", "Por cobro", "Al mes", "Próximo cobro", "Estado", ""]}
-        empty={items.length === 0 ? "Aún no hay suscripciones registradas." : undefined}
-      >
-        {items.map((item) => (
-          <tr key={item.id} className={cn("align-top hover:bg-paper", item.status === "cancelado" && "text-ink-600")}>
-            <td className="px-3 py-2.5">
-              <span className="font-medium">{item.concept}</span>
-              {item.vendor && <p className="text-xs text-ink-600">{item.vendor}</p>}
-            </td>
-            <td className="px-3 py-2.5">{EXPENSE_CATEGORIES[item.category]?.split(" (")[0] ?? item.category}</td>
-            <td className="px-3 py-2.5">{item.periodicity === "mensual" ? "Cada mes" : "Cada año"}</td>
-            <td className="px-3 py-2.5 text-right tabular-nums">{formatMxn(item.total_cents)}</td>
-            <td className="px-3 py-2.5 text-right tabular-nums">{formatMxn(item.monthly_equivalent_cents)}</td>
-            <td className="px-3 py-2.5">
-              <NextCharge item={item} />
-            </td>
-            <td className="px-3 py-2.5">{item.status === "activo" ? <Badge tone="ok">Activa</Badge> : <Badge>Cancelada</Badge>}</td>
-            <td className="px-3 py-2.5">
-              {editable && (
-                <span className="flex flex-col items-start gap-2">
-                  <Link href={`/gastos/suscripciones/${item.id}`} className="text-xs font-semibold text-gold-800 hover:underline">
-                    Editar
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-ink-150 bg-surface px-4 py-10 text-center">
+          <p className="text-sm font-medium text-ink-950">Aún no hay suscripciones registradas.</p>
+          {editable && (
+            <Link href="/gastos/suscripciones/nueva" className={cn(ui.buttonPrimary, "mt-4 max-md:hidden")}>
+              <Plus size={16} aria-hidden="true" /> Nueva suscripción
+            </Link>
+          )}
+        </div>
+      ) : (
+        <Table
+          head={[
+            "Servicio",
+            "Categoría",
+            "Se cobra",
+            right("Por cobro (con IVA)"),
+            right("Al mes (con IVA)"),
+            "Próximo cobro",
+            "Estado",
+            ...(editable ? [<span key="acciones" className="sr-only">Acciones</span>] : []),
+          ]}
+          mobileHide={[1, 2, 4, 5, 7]}
+          mobileCards
+          caption="Suscripciones y servicios"
+        >
+          {items.map((item) => (
+            <tr key={item.id} className={cn("relative align-top", item.status === "cancelado" && "text-ink-600")}>
+              <td className="px-3 py-2.5">
+                {editable ? (
+                  <Link href={`/gastos/suscripciones/${item.id}`} className="font-medium hover:underline max-sm:after:absolute max-sm:after:inset-0">
+                    {item.concept}
                   </Link>
-                  <SubscriptionStatusAction id={item.id} status={item.status} />
-                </span>
+                ) : (
+                  <span className="font-medium">{item.concept}</span>
+                )}
+                {item.vendor && <p className="text-xs text-ink-600">{item.vendor}</p>}
+                {item.status !== "cancelado" && (
+                  <p className="text-xs whitespace-nowrap text-ink-600 sm:hidden">Próximo cobro {formatDay(item.next_charge_date)}</p>
+                )}
+              </td>
+              <td className="px-3 py-2.5">{EXPENSE_CATEGORIES[item.category]?.split(" (")[0] ?? item.category}</td>
+              <td className="px-3 py-2.5 whitespace-nowrap">{item.periodicity === "mensual" ? "Cada mes" : "Cada año"}</td>
+              <td className={cn("px-3 py-2.5 text-right whitespace-nowrap tabular-nums", zeroClass(item.total_cents))}>{formatMxn(item.total_cents)}</td>
+              <td className={cn("px-3 py-2.5 text-right whitespace-nowrap tabular-nums", zeroClass(item.monthly_equivalent_cents))}>{formatMxn(item.monthly_equivalent_cents)}</td>
+              <td className="px-3 py-2.5">
+                <NextCharge item={item} />
+              </td>
+              <td className="px-3 py-2.5">
+                {/* Solo la excepción lleva chip: activa es lo normal. */}
+                {item.status === "cancelado" && (
+                  <Badge>
+                    <CircleSlash size={12} aria-hidden="true" />
+                    Cancelada
+                  </Badge>
+                )}
+              </td>
+              {editable && (
+                <td className="px-3 py-2">
+                  <span className="flex items-start gap-1">
+                    <Link
+                      href={`/gastos/suscripciones/${item.id}`}
+                      className="inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium text-ink-800 hover:bg-surface-2 hover:text-ink-950"
+                    >
+                      Editar
+                    </Link>
+                    {/* Cancelar vive en la ficha (acción destructiva); reactivar se queda a la mano. */}
+                    {item.status === "cancelado" && <SubscriptionStatusAction id={item.id} status={item.status} />}
+                  </span>
+                </td>
               )}
-            </td>
-          </tr>
-        ))}
-      </Table>
+            </tr>
+          ))}
+        </Table>
+      )}
     </>
   );
 }

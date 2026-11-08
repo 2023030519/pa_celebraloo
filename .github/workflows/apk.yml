@@ -1,0 +1,75 @@
+# Al subir a main con una "version" nueva en apk/package.json: compila la APK y publica el release.
+# El panel la encuentra en Configuración › Versión. Solo corre en la repo pública del autor
+# (2023030519/pa_celebraloo); en la repo del cliente no hace nada.
+name: Release APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["apk/**", ".github/workflows/apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == '2023030519/pa_celebraloo'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apk
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: ¿Versión nueva?
+        id: v
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then echo "nueva=no" >> "$GITHUB_OUTPUT"; else echo "nueva=si" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.v.outputs.nueva == 'si'
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apk/package-lock.json
+
+      - if: steps.v.outputs.nueva == 'si'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - if: steps.v.outputs.nueva == 'si'
+        name: Notas del CHANGELOG
+        run: node scripts/notas.mjs > notas.md
+
+      # Misma llave que la APK instalada en el cel; con otra, Android no deja actualizar.
+      - if: steps.v.outputs.nueva == 'si'
+        name: Llave de firma
+        run: |
+          if [ -z "$DEBUG_KEYSTORE" ]; then echo "::error::Falta el secreto DEBUG_KEYSTORE (ver apk/README.md)"; exit 1; fi
+          echo "$DEBUG_KEYSTORE" | base64 -d > "$RUNNER_TEMP/apk.keystore"
+          echo "APK_KEYSTORE=$RUNNER_TEMP/apk.keystore" >> "$GITHUB_ENV"
+        env:
+          DEBUG_KEYSTORE: ${{ secrets.DEBUG_KEYSTORE }}
+
+      - if: steps.v.outputs.nueva == 'si'
+        run: npm ci && chmod +x android/gradlew && npm run apk
+
+      # Huella de la llave de depuración de la PC del autor; si no coincide, no se publica.
+      - if: steps.v.outputs.nueva == 'si'
+        name: Revisar firma
+        run: |
+          firma=$("$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -m1 'SHA-256' | awk '{print $NF}')
+          echo "firma: $firma"
+          [ "$firma" = "db9be13279ba9716551518421a9e95dd0f0da1585b2a2ecd7125be49bfc5aad0" ] || { echo "::error::La APK no está firmada con la llave del cel"; exit 1; }
+
+      - if: steps.v.outputs.nueva == 'si'
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk celebraloo-admin.apk
+          gh release create "v${{ steps.v.outputs.version }}" celebraloo-admin.apk --title "Celebraloo Admin ${{ steps.v.outputs.version }}" --notes-file notas.md

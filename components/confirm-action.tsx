@@ -1,15 +1,15 @@
 "use client";
 
-import { useId, useState, useTransition, type ReactNode } from "react";
-import { cn } from "@/components/ui";
+import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
+import { cn, ui } from "@/components/ui";
 
 export type ConfirmResult = { ok: boolean; message: string };
 
 const TONES = {
-  neutral: "border border-ink-250 bg-surface text-ink-800 hover:bg-paper",
-  primary: "bg-ink-950 text-surface hover:bg-ink-800",
-  danger: "bg-danger-700 text-surface hover:opacity-90",
-  ok: "bg-ok-700 text-surface hover:opacity-90",
+  neutral: "border border-ink-250 bg-surface text-ink-950 hover:bg-surface-2",
+  primary: "bg-gold-800 text-surface hover:bg-gold-900",
+  danger: "bg-danger-700 text-surface hover:bg-danger-800",
+  ok: "bg-ok-700 text-surface hover:bg-ok-800",
 } as const;
 
 /**
@@ -25,6 +25,7 @@ export function ConfirmAction({
   placeholder = "Motivo (obligatorio, queda en Actividad)",
   disabledReason,
   size = "md",
+  pendingLabel = "Aplicando…",
   onConfirm,
 }: {
   label: ReactNode;
@@ -35,6 +36,8 @@ export function ConfirmAction({
   /** Si hay texto, el botón no se puede usar y se explica por qué. */
   disabledReason?: string | null;
   size?: "sm" | "md";
+  /** Texto del botón mientras corre la acción (p. ej. si tarda). */
+  pendingLabel?: string;
   onConfirm: (reason: string) => Promise<ConfirmResult | void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -42,8 +45,15 @@ export function ConfirmAction({
   const [result, setResult] = useState<ConfirmResult | null>(null);
   const [pending, startTransition] = useTransition();
   const inputId = useId();
+  // Al cerrar el panel del motivo, el foco vuelve al botón que lo abrió (no a <body>).
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) triggerRef.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
   const button = cn(
-    "inline-flex items-center justify-center gap-1.5 rounded-md font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors duration-[var(--dur-fast)] disabled:border disabled:border-ink-250 disabled:bg-surface-2 disabled:text-ink-400 disabled:cursor-not-allowed",
     size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3"
   );
 
@@ -62,6 +72,7 @@ export function ConfirmAction({
     <div className="flex flex-col items-start gap-2">
       {!open ? (
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => {
             setOpen(true);
@@ -72,9 +83,9 @@ export function ConfirmAction({
           {label}
         </button>
       ) : (
-        <div className="flex w-full max-w-md flex-col gap-2 rounded-lg border border-ink-150 bg-paper p-3">
+        <div className="animate-enter flex w-full max-w-md flex-col gap-2 rounded-lg border border-ink-150 bg-surface-2/60 p-3">
           {description && <div className="text-xs text-ink-800">{description}</div>}
-          <label htmlFor={inputId} className="text-xs font-semibold text-ink-800">
+          <label htmlFor={inputId} className="text-[13px] font-medium text-ink-800">
             Motivo
           </label>
           <textarea
@@ -84,7 +95,8 @@ export function ConfirmAction({
             maxLength={500}
             rows={2}
             placeholder={placeholder}
-            className="w-full rounded-md border border-ink-250 bg-surface px-2.5 py-1.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30"
+            autoFocus
+            className={cn(ui.field, "h-auto w-full py-2")}
           />
           <div className="flex flex-wrap gap-2">
             <button
@@ -102,19 +114,18 @@ export function ConfirmAction({
               }
               className={cn(button, TONES[tone])}
             >
-              {pending ? "Aplicando…" : confirmLabel}
+              {pending ? pendingLabel : confirmLabel}
             </button>
-            <button type="button" disabled={pending} onClick={() => setOpen(false)} className={cn(button, "text-ink-600 hover:bg-surface")}>
+            <button type="button" disabled={pending} onClick={() => setOpen(false)} className={cn(button, "text-ink-600 hover:bg-surface-2 hover:text-ink-950")}>
               Cancelar
             </button>
           </div>
         </div>
       )}
-      {result && (
-        <p role="status" className={cn("text-xs", result.ok ? "text-ok-700" : "text-danger-700")}>
-          {result.message}
-        </p>
-      )}
+      {/* Siempre montado: un live region que aparece ya lleno a menudo no se anuncia. */}
+      <p role="status" className={cn("text-xs empty:hidden", result?.ok ? "text-ok-700" : "text-danger-700")}>
+        {result?.message}
+      </p>
     </div>
   );
 }

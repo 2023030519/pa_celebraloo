@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { setStaffRole, type ActionResult } from "@/app/(admin)/usuarios/actions";
-import { ADMIN_ROLES, ROLE_DESCRIPTIONS, ROLE_LABELS, type AdminRole } from "@/lib/auth/permissions";
-import { cn } from "@/components/ui";
-
-const inputClass =
-  "h-9 rounded-md border border-ink-250 bg-surface px-2.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30 disabled:opacity-50";
+import { ADMIN_ROLES, ROLE_LABELS, type AdminRole } from "@/lib/auth/permissions";
+import { RoleScope } from "@/components/role-cell";
+import { Select, cn, ui } from "@/components/ui";
 
 /** Cambiar el rol del panel. El motivo es obligatorio y queda en Actividad. */
 export function RoleSelect({ userId, role }: { userId: string; role: AdminRole | null }) {
@@ -15,38 +13,48 @@ export function RoleSelect({ userId, role }: { userId: string; role: AdminRole |
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   const changed = (next || null) !== role;
+  const id = useId();
 
   return (
-    <div className="flex flex-col gap-2">
-      <select
-        aria-label="Rol en el panel"
-        value={next}
-        disabled={pending}
-        onChange={(event) => {
-          setNext(event.target.value as AdminRole | "");
-          setResult(null);
-        }}
-        className={inputClass}
-      >
-        {ADMIN_ROLES.map((value) => (
-          <option key={value} value={value}>
-            {ROLE_LABELS[value]}
-          </option>
-        ))}
-        <option value="">Sin acceso al panel</option>
-      </select>
-      <p className="text-xs text-ink-600">{next ? ROLE_DESCRIPTIONS[next] : "No puede entrar al panel."}</p>
+    <div className="flex flex-col gap-3">
+      <label className="flex flex-col gap-1">
+        <span className="text-[13px] font-medium text-ink-800">Rol en el panel</span>
+        <Select
+          value={next}
+          disabled={pending}
+          onChange={(event) => {
+            setNext(event.target.value as AdminRole | "");
+            setResult(null);
+          }}
+          className="w-full sm:max-w-sm"
+        >
+          {ADMIN_ROLES.map((value) => (
+            <option key={value} value={value}>
+              {ROLE_LABELS[value]}
+            </option>
+          ))}
+          <option value="">Sin acceso al panel</option>
+        </Select>
+      </label>
+      {next ? <RoleScope role={next} /> : <p className="text-[13px] text-ink-600">No puede entrar al panel.</p>}
       {changed && (
-        <>
+        <div className="flex flex-col gap-2 border-t border-ink-150 pt-3">
+          <label htmlFor={`${id}-reason`} className="text-[13px] font-medium text-ink-800">
+            Motivo
+          </label>
           <input
+            id={`${id}-reason`}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             maxLength={500}
-            placeholder="Motivo del cambio (obligatorio)"
-            aria-label="Motivo del cambio de rol"
-            className={cn(inputClass, "w-full")}
+            aria-describedby={`${id}-hint`}
+            className={cn(ui.field, "w-full max-md:h-11")}
           />
+          <p id={`${id}-hint`} className="text-xs text-ink-600">
+            Obligatorio, mínimo 3 caracteres. Queda en Actividad junto con el cambio.
+          </p>
           <button
+            type="button"
             disabled={pending || reason.trim().length < 3}
             onClick={() =>
               startTransition(async () => {
@@ -55,14 +63,13 @@ export function RoleSelect({ userId, role }: { userId: string; role: AdminRole |
                 if (outcome.ok) setReason("");
               })
             }
-            className="inline-flex h-9 items-center justify-center rounded-md bg-ink-950 px-3 font-semibold text-surface hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className={cn(ui.buttonPrimary, "self-start max-md:self-stretch")}
           >
-            Guardar rol
+            {pending ? "Guardando…" : "Guardar rol"}
           </button>
-        </>
+        </div>
       )}
-      <p aria-live="polite" className="min-h-4 text-xs">
-        {pending && <span className="text-ink-600">Guardando…</span>}
+      <p aria-live="polite" className="text-xs empty:-mt-3">
         {!pending && result && <span className={result.ok ? "text-ok-700" : "text-danger-700"}>{result.message}</span>}
       </p>
     </div>

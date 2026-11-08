@@ -99,5 +99,5 @@ export async function deleteEvent(eventId: string, confirmName: string, reason: 
   ]).catch(() => [false]);
   if (results.some((ok) => !ok)) console.error("[admin-delete-event] Quedaron archivos sin borrar en Storage", { eventId });
 
-  redirect("/eventos");
+  redirect("/eventos?borrado=1");
 }

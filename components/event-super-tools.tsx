@@ -1,131 +1,126 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Lock, LockOpen, Trash2 } from "lucide-react";
-import { deleteEvent, setEditUnlock, type ActionResult } from "@/app/(admin)/eventos/[id]/super-actions";
-import { cn, formatDate } from "@/components/ui";
+import { useId, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { deleteEvent, setEditUnlock } from "@/app/(admin)/eventos/[id]/super-actions";
+import { Select, cn, formatDate, ui } from "@/components/ui";
+import { ReasonField, useReasonedAction } from "@/components/permissions-editor";
+import type { EditLock } from "@/lib/edit-lock";
 
-const inputClass =
-  "h-9 rounded-md border border-ink-250 bg-surface px-2.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30 disabled:opacity-50";
-const buttonClass =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40";
-
-export function EventSuperTools({
+/** Candado de edición del cliente (eventos.desbloquear). Va en la columna lateral; su estado ya está en la franja de cifras. */
+export function EditLockPanel({
   eventId,
-  eventName,
-  locked,
+  lock,
   activeUnlock,
-  canUnlock,
-  canDelete,
 }: {
   eventId: string;
-  eventName: string;
-  /** Hoy el cliente no puede editar fecha ni invitación. */
-  locked: boolean;
+  /** Candado según la BD (o el error si no se pudo leer). */
+  lock: EditLock;
   /** Desbloqueo vigente (null = sin excepción o ya venció). */
   activeUnlock: string | null;
-  canUnlock: boolean;
-  canDelete: boolean;
 }) {
-  const [reason, setReason] = useState("");
+  const action = useReasonedAction();
   const [days, setDays] = useState(3);
-  const [confirmName, setConfirmName] = useState("");
-  const [result, setResult] = useState<ActionResult | null>(null);
-  const [pending, startTransition] = useTransition();
-  const reasonReady = reason.trim().length >= 3;
-
-  const run = (action: () => Promise<ActionResult>) => {
-    setResult(null);
-    startTransition(async () => {
-      setResult(await action());
-    });
-  };
+  const daysId = useId();
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-ink-800">
-          Motivo <span className="font-normal text-ink-600">(obligatorio, queda en Actividad)</span>
-        </span>
-        <input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          maxLength={500}
-          placeholder="Ej.: cambiaron la sede a última hora"
-          className={cn(inputClass, "w-full max-w-xl")}
-        />
-      </label>
-      <p aria-live="polite" className="min-h-5 text-[13px]">
-        {pending && <span className="text-ink-600">Aplicando…</span>}
-        {!pending && result && <span className={result.ok ? "text-ok-700" : "text-danger-700"}>{result.message}</span>}
-      </p>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        {canUnlock && (
-        <section className="flex flex-col gap-2 rounded-xl border border-ink-150 bg-surface p-4 shadow-sm">
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
-            {locked ? <Lock size={14} aria-hidden="true" /> : <LockOpen size={14} aria-hidden="true" />}
-            Edición del cliente
-          </h3>
-          <p className="text-xs text-ink-600">
-            {activeUnlock
-              ? `Desbloqueada hasta ${formatDate(activeUnlock, true)}.`
-              : locked
-                ? "Bloqueada: faltan menos de 2 semanas para el evento. El cliente no puede cambiar la fecha ni la invitación."
-                : "Sin bloqueo por ahora. El bloqueo empieza 2 semanas antes del evento."}
-          </p>
-          <div className="mt-auto flex flex-wrap gap-2">
-            <select value={days} onChange={(event) => setDays(Number(event.target.value))} className={inputClass} aria-label="Duración">
+    <section aria-labelledby="candado" className="rounded-lg border border-ink-150 bg-surface">
+      <h2 id="candado" className="border-b border-ink-150 px-4 py-3 text-base font-semibold text-ink-950">
+        Edición del cliente
+      </h2>
+      <div className="flex flex-col gap-3 p-4">
+        {/* formatDate ya termina en "a.m."/"p.m.": por eso la fecha va al final y sin punto. */}
+        <p className="text-[13px] text-ink-800">
+          {activeUnlock
+            ? `Desbloqueada hasta ${formatDate(activeUnlock, true)}`
+            : lock.error !== null
+              ? lock.error
+              : lock.locked
+                ? `El cliente no puede cambiar la fecha ni la invitación. Bloqueada desde ${formatDate(lock.lockAt, true)}`
+                : lock.lockAt
+                  ? `Sin bloqueo por ahora. Se bloquea 15 días antes del evento (o 72 h después de publicar, lo que pase después): ${formatDate(lock.lockAt, true)}`
+                  : "Sin bloqueo: el evento no tiene fecha."}
+        </p>
+        <ReasonField state={action} placeholder="Ej.: cambiaron la sede a última hora" />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor={daysId} className="text-[13px] font-medium text-ink-800">
+              Duración
+            </label>
+            <Select id={daysId} value={days} onChange={(event) => setDays(Number(event.target.value))} className="w-32">
               <option value={1}>1 día</option>
               <option value={3}>3 días</option>
               <option value={7}>7 días</option>
-            </select>
-            <button
-              disabled={pending || !reasonReady}
-              onClick={() => run(() => setEditUnlock(eventId, days, reason))}
-              className={cn(buttonClass, "bg-ink-950 text-surface hover:bg-ink-800")}
-            >
-              Desbloquear
-            </button>
-            {activeUnlock && (
-              <button
-                disabled={pending || !reasonReady}
-                onClick={() => run(() => setEditUnlock(eventId, null, reason))}
-                className={cn(buttonClass, "border border-ink-250 hover:bg-paper")}
-              >
-                Volver a bloquear
-              </button>
-            )}
+            </Select>
           </div>
-        </section>
-        )}
+          <button
+            type="button"
+            disabled={action.pending}
+            onClick={() => action.run(() => setEditUnlock(eventId, days, action.reason))}
+            className={cn(ui.buttonPrimary, "max-md:w-full")}
+          >
+            Desbloquear
+          </button>
+          {activeUnlock && (
+            <button
+              type="button"
+              disabled={action.pending}
+              onClick={() => action.run(() => setEditUnlock(eventId, null, action.reason))}
+              className={cn(ui.buttonSecondary, "max-md:w-full")}
+            >
+              Volver a bloquear
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-        {canDelete && (
-        <section className="flex flex-col gap-2 rounded-xl border border-danger-700/40 bg-danger-100/40 p-4 shadow-sm">
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-danger-700">
-            <Trash2 size={14} aria-hidden="true" /> Borrar evento
-          </h3>
-          <p className="text-xs text-ink-600">
-            Permanente: invitados, mesas, invitación, álbum y archivos. Las compras quedan registradas sin evento. Escribe el
-            nombre exacto para confirmar.
-          </p>
+/** Borrado permanente (eventos.borrar): motivo y nombre exacto del evento. */
+export function DeleteEventPanel({ eventId, eventName }: { eventId: string; eventName: string }) {
+  const action = useReasonedAction();
+  const [confirmName, setConfirmName] = useState("");
+  const nameId = useId();
+  const nameMatches = confirmName.trim() === eventName.trim();
+
+  return (
+    <section aria-labelledby="borrar" className="rounded-lg border border-danger-300 bg-surface">
+      <div className="border-b border-danger-300 px-4 py-3">
+        <h2 id="borrar" className="flex items-center gap-1.5 text-base font-semibold text-danger-700">
+          <Trash2 size={14} aria-hidden="true" /> Borrar evento
+        </h2>
+        <p className="mt-0.5 max-w-[75ch] text-xs text-ink-600">
+          Permanente: invitados, mesas, invitación, álbum y archivos. Las compras quedan registradas sin evento.
+        </p>
+      </div>
+      <div className="grid gap-3 p-4 md:grid-cols-2">
+        <ReasonField state={action} placeholder="Ej.: el cliente pidió borrar su evento" />
+        <div className="flex flex-col gap-1">
+          <label htmlFor={nameId} className="text-[13px] font-medium text-ink-800">
+            Escribe el nombre exacto del evento
+          </label>
           <input
+            id={nameId}
             value={confirmName}
             onChange={(event) => setConfirmName(event.target.value)}
             placeholder={eventName}
-            aria-label="Nombre del evento"
-            className={cn(inputClass, "w-full")}
+            autoComplete="off"
+            className={cn(ui.field, "w-full max-md:h-11")}
           />
+          <p className="text-xs text-ink-600">El botón se habilita cuando el nombre coincide.</p>
+        </div>
+        <div className="md:col-span-2">
           <button
-            disabled={pending || !reasonReady || confirmName.trim() !== eventName.trim()}
-            onClick={() => run(() => deleteEvent(eventId, confirmName, reason))}
-            className={cn(buttonClass, "mt-auto bg-danger-700 text-surface")}
+            type="button"
+            disabled={action.pending || !nameMatches}
+            onClick={() => action.run(() => deleteEvent(eventId, confirmName, action.reason))}
+            className={cn(ui.buttonDanger, "max-md:w-full")}
           >
             Borrar para siempre
           </button>
-        </section>
-        )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

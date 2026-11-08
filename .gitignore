@@ -43,3 +43,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# bunshin (rediseño)
+.bunshin/
+
+# app de Android (apk/): lockfile de npm y sus dependencias
+!apk/package-lock.json
+/apk/node_modules
+/apk/*.apk

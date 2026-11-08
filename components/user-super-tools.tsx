@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Gift, ShieldCheck, Trash2 } from "lucide-react";
 import { deleteAccount, resetFreePlan, type ActionResult } from "@/app/(admin)/usuarios/actions";
 import { RoleSelect } from "@/components/role-select";
-import { cn } from "@/components/ui";
+import { cn, ui } from "@/components/ui";
 import type { AdminRole } from "@/lib/auth/permissions";
 
-const inputClass =
-  "h-9 rounded-md border border-ink-250 bg-surface px-2.5 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30 disabled:opacity-50";
-const buttonClass =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40";
-const cardClass = "flex flex-col gap-2 rounded-xl border border-ink-150 bg-surface p-4 shadow-sm";
+const heading = "flex items-center gap-1.5 text-[13px] font-semibold text-ink-950";
 
+/** Rol, prueba gratis y borrado, apilados al final de la ficha (secciones con divisor, sin tarjetas). */
 export function UserSuperTools({
   userId,
   email,
@@ -37,6 +34,9 @@ export function UserSuperTools({
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   const reasonReady = reason.trim().length >= 3;
+  const id = useId();
+  // Borrar la propia cuenta no se ofrece, así que ahí el motivo compartido solo sirve a la prueba gratis.
+  const needsReason = canResetFreePlan || (canDelete && !isSelf);
 
   const run = (action: () => Promise<ActionResult>) => {
     setResult(null);
@@ -46,66 +46,73 @@ export function UserSuperTools({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-ink-800">
-          Motivo <span className="font-normal text-ink-600">(para plan gratis y borrar; queda en Actividad)</span>
-        </span>
-        <input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          maxLength={500}
-          placeholder="Ej.: se equivocó de correo al registrarse"
-          className={cn(inputClass, "w-full max-w-xl")}
-        />
-      </label>
-      <p aria-live="polite" className="min-h-5 text-[13px]">
-        {pending && <span className="text-ink-600">Aplicando…</span>}
-        {!pending && result && <span className={result.ok ? "text-ok-700" : "text-danger-700"}>{result.message}</span>}
-      </p>
-
-      <div className="grid gap-3 lg:grid-cols-3">
-        {canEditRole && (
-        <section className={cardClass}>
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
-            <ShieldCheck size={14} aria-hidden="true" /> Rol en el panel
+    <div className="flex flex-col divide-y divide-ink-150">
+      {canEditRole && (
+        <section className="flex flex-col gap-3 p-4">
+          <h3 className={heading}>
+            <ShieldCheck size={14} aria-hidden="true" className="text-ink-600" /> Rol en el panel
           </h3>
           <RoleSelect userId={userId} role={role} />
         </section>
-        )}
+      )}
 
-        {canResetFreePlan && (
-        <section className={cardClass}>
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
-            <Gift size={14} aria-hidden="true" /> Recorrido gratuito
+      {needsReason && (
+        <div className="flex flex-col gap-1 p-4">
+          <label htmlFor={`${id}-reason`} className="text-[13px] font-medium text-ink-800">
+            Motivo
+          </label>
+          <input
+            id={`${id}-reason`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+            placeholder="Ej.: se equivocó de correo al registrarse"
+            aria-describedby={`${id}-hint`}
+            className={cn(ui.field, "w-full max-md:h-11")}
+          />
+          <p id={`${id}-hint`} className="text-xs text-ink-600">
+            Para devolver la prueba gratis o borrar la cuenta. Mínimo 3 caracteres; queda en Actividad.
+          </p>
+          <p aria-live="polite" className="text-[13px] empty:-mt-1">
+            {pending && <span className="text-ink-600">Aplicando…</span>}
+            {!pending && result && <span className={result.ok ? "text-ok-700" : "text-danger-700"}>{result.message}</span>}
+          </p>
+        </div>
+      )}
+
+      {canResetFreePlan && (
+        <section className="flex flex-col gap-2 p-4">
+          <h3 className={heading}>
+            <Gift size={14} aria-hidden="true" className="text-ink-600" /> Prueba gratis
           </h3>
-          <p className="text-xs text-ink-600">
+          <p className="text-[13px] text-ink-600">
             {freePlanUsed === null
-              ? "No se pudo consultar (¿falta la migración del plan gratis?)."
+              ? "No se pudo consultar (¿falta la migración de la prueba gratis?)."
               : freePlanUsed
                 ? "Este correo ya lo usó. Devolverlo le deja crear otro evento gratis."
                 : "Este correo todavía no lo ha usado."}
           </p>
           <button
+            type="button"
             disabled={pending || !reasonReady || freePlanUsed === false}
             onClick={() => run(() => resetFreePlan(email, reason))}
-            className={cn(buttonClass, "mt-auto bg-ink-950 text-surface hover:bg-ink-800")}
+            className={cn(ui.buttonSecondary, "self-start max-md:self-stretch")}
           >
-            Devolver plan gratis
+            Devolver prueba gratis
           </button>
         </section>
-        )}
+      )}
 
-        {canDelete && (
-        <section className={cn(cardClass, "border-danger-700/40 bg-danger-100/40")}>
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-danger-700">
+      {canDelete && (
+        <section className="flex flex-col gap-2 p-4">
+          <h3 className={cn(heading, "text-danger-700")}>
             <Trash2 size={14} aria-hidden="true" /> Borrar cuenta
           </h3>
           {isSelf ? (
-            <p className="text-xs text-ink-600">No puedes borrar tu propia cuenta.</p>
+            <p className="text-[13px] text-ink-600">No puedes borrar tu propia cuenta.</p>
           ) : (
             <>
-              <p className="text-xs text-ink-600">
+              <p className="text-[13px] text-ink-600">
                 Permanente. Solo si no es dueña de eventos (bórralos antes). Escribe el correo para confirmar.
               </p>
               <input
@@ -113,20 +120,21 @@ export function UserSuperTools({
                 onChange={(event) => setConfirmEmail(event.target.value)}
                 placeholder={email}
                 aria-label="Correo de la cuenta"
-                className={cn(inputClass, "w-full")}
+                autoComplete="off"
+                className={cn(ui.field, "w-full max-md:h-11")}
               />
               <button
+                type="button"
                 disabled={pending || !reasonReady || confirmEmail.trim().toLowerCase() !== email.toLowerCase()}
                 onClick={() => run(() => deleteAccount(userId, confirmEmail, reason))}
-                className={cn(buttonClass, "mt-auto bg-danger-700 text-surface")}
+                className={cn(ui.buttonDanger, "self-start max-md:self-stretch")}
               >
                 Borrar para siempre
               </button>
             </>
           )}
         </section>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addNote, deleteNote } from "@/app/(admin)/notas/actions";
+import { cn, ui } from "@/components/ui";
 
 export function NoteForm({ targetType, targetId }: { targetType: string; targetId: string }) {
   const [body, setBody] = useState("");
@@ -27,16 +28,16 @@ export function NoteForm({ targetType, targetId }: { targetType: string; targetI
         maxLength={5000}
         placeholder="Agregar una nota interna…"
         aria-label="Nueva nota"
-        className="w-full rounded-md border border-ink-250 bg-surface px-3 py-2 outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/30"
+        className="w-full rounded-md border border-ink-250 bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--dur-fast)] hover:border-ink-400 focus:border-gold-600 focus:ring-2 focus:ring-gold-600/25 focus:outline-none"
       />
       <div className="flex items-center gap-3">
-        <button
-          disabled={pending || !body.trim()}
-          className="h-8 rounded-md bg-ink-950 px-3 text-xs font-semibold text-surface hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <button disabled={pending || !body.trim()} className={ui.buttonPrimary}>
           {pending ? "Guardando…" : "Agregar nota"}
         </button>
-        {message && <span className={message.ok ? "text-xs text-ok-700" : "text-xs text-danger-700"}>{message.text}</span>}
+        {/* Siempre montado para que el resultado se anuncie. */}
+        <p role="status" className={cn("text-xs empty:hidden", message?.ok ? "text-ok-700" : "text-danger-700")}>
+          {message?.text}
+        </p>
       </div>
     </form>
   );
@@ -44,6 +45,7 @@ export function NoteForm({ targetType, targetId }: { targetType: string; targetI
 
 export function DeleteNoteButton({ noteId }: { noteId: string }) {
   const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (!confirming) {
@@ -54,18 +56,38 @@ export function DeleteNoteButton({ noteId }: { noteId: string }) {
     );
   }
   return (
-    <span className="flex gap-2">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => startTransition(async () => void (await deleteNote(noteId)))}
-        className="font-semibold text-danger-700"
-      >
-        {pending ? "Borrando…" : "Confirmar"}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)} className="font-semibold">
-        Cancelar
-      </button>
+    <span className="flex flex-col items-end gap-1">
+      <span className="flex gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              // Sin permiso la BD no borra nada (0 filas) y la acción lo dice: hay que mostrarlo.
+              const result = await deleteNote(noteId);
+              setError(result.ok ? null : result.message);
+            })
+          }
+          className="font-semibold text-danger-700"
+        >
+          {pending ? "Borrando…" : "Confirmar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setConfirming(false);
+            setError(null);
+          }}
+          className="font-semibold"
+        >
+          Cancelar
+        </button>
+      </span>
+      {error && (
+        <span role="alert" className="text-danger-700">
+          {error}
+        </span>
+      )}
     </span>
   );
 }

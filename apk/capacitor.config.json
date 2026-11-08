@@ -1,0 +1,13 @@
+{
+  "appId": "com.celebraloo.admin",
+  "appName": "Celebraloo Admin",
+  "webDir": "www",
+  "server": {
+    "url": "http://192.168.1.8:3011",
+    "cleartext": true,
+    "errorPath": "sin-conexion.html"
+  },
+  "android": {
+    "appendUserAgent": "CelebralooAdminApp/0.2.0"
+  }
+}

@@ -1,19 +1,27 @@
 import "server-only";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { listAdminEvents } from "@/lib/data/admin";
 import { getCatalog } from "@/lib/data/catalog";
-import { EVENT_STATUS, formatDay } from "@/lib/format";
-import { Badge, PageTitle, Table } from "@/components/ui";
+import { EVENT_STATUS, EVENT_TYPE, NO_OWNER, formatDay } from "@/lib/format";
+import { Badge, HowCalculated, Nil, PageTitle, Select, Table, cn, zeroClass } from "@/components/ui";
 import { DataError, EventStatusBadge } from "@/components/finance";
-import { Field, FilterBar, Pagination, fieldClass, pageFrom } from "@/components/filters";
+import { Field, FilterBar, Pagination, SearchField, pageFrom } from "@/components/filters";
 
 const PAGE_SIZE = 50;
 
 /** Eventos del Panel V1 (sección 8): estado derivado, plan e invitados sin datos demo. */
-export async function SuperEventsList({ params }: { params: { q?: string; estado?: string; staff?: string; pagina?: string } }) {
+export async function SuperEventsList({
+  params: { borrado, ...params },
+}: {
+  /** borrado: llega de borrar un evento (super-actions.ts) para confirmarlo aquí. */
+  params: { q?: string; estado?: string; staff?: string; pagina?: string; borrado?: string };
+}) {
   const status = params.estado && params.estado in EVENT_STATUS ? params.estado : null;
   const includeStaff = params.staff === "1";
   const page = pageFrom(params.pagina);
+  const active = Boolean(params.q?.trim() || status || includeStaff);
+  const filtered = active || page > 1;
   const catalog = await getCatalog();
   const planName = new Map(catalog.plans.map((plan) => [plan.key, plan.name]));
 
@@ -35,71 +43,105 @@ export async function SuperEventsList({ params }: { params: { q?: string; estado
     );
   }
 
+  const total = rows[0]?.total_count ?? 0;
+
   return (
     <>
-      <PageTitle
-        title="Eventos"
-        subtitle="Estado: Archivado › Finalizado › Próximo (≤ 30 días) › Activo (invitación publicada) › Configurando › Borrador."
-      />
-      <FilterBar resetHref="/eventos">
-        <Field label="Buscar">
-          <input name="q" defaultValue={params.q ?? ""} placeholder="Evento, correo del cliente o ID" className={`${fieldClass} w-64`} />
-        </Field>
+      <PageTitle title="Eventos" subtitle="Eventos de clientes, con su plan, estado e invitados" />
+      {borrado && (
+        <p role="status" className="mb-4 flex items-center gap-2 rounded-lg border border-ok-300 bg-ok-100 px-3 py-2 text-sm text-ok-700">
+          <CheckCircle2 size={16} aria-hidden="true" className="shrink-0" />
+          Evento borrado. Quedó en Actividad con su motivo.
+        </p>
+      )}
+      <FilterBar resetHref="/eventos" active={active} activeCount={[status, includeStaff].filter(Boolean).length} count={`${total} ${total === 1 ? "evento" : "eventos"}`}>
+        <SearchField label="Buscar por evento, correo del cliente o ID" placeholder="Evento, correo del cliente o ID" defaultValue={params.q} />
         <Field label="Estado">
-          <select name="estado" defaultValue={status ?? ""} className={fieldClass}>
+          <Select name="estado" defaultValue={status ?? ""} size="sm" className="w-40">
             <option value="">Todos</option>
             {Object.entries(EVENT_STATUS).map(([key, meta]) => (
               <option key={key} value={key}>
                 {meta.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
-        <label className="flex h-9 items-center gap-2 text-xs font-semibold text-ink-800">
-          <input type="checkbox" name="staff" value="1" defaultChecked={includeStaff} />
+        <label className="flex h-11 items-center gap-2 text-xs font-medium text-ink-800 md:h-8">
+          <input type="checkbox" name="staff" value="1" defaultChecked={includeStaff} className="size-4 accent-gold-800" />
           Incluir eventos de staff
         </label>
       </FilterBar>
       <Table
-        head={["Evento", "Cliente", "Fecha", "Tipo", "Plan", "Invitados", "RSVP", "Estado"]}
-        empty={rows.length === 0 ? "No hay eventos con esos filtros." : undefined}
+        head={[
+          "Evento",
+          "Cliente",
+          "Fecha",
+          "Tipo",
+          "Plan",
+          "Estado",
+          <span key="guests" className="block text-right">Invitados</span>,
+          <span key="rsvp" className="block text-right">RSVP</span>,
+        ]}
+        mobileHide={[1, 3, 4, 6, 7]}
+        mobileCards
+        empty={
+          rows.length > 0
+            ? undefined
+            : filtered
+              ? "Ningún evento coincide con estos filtros. Usa Limpiar para ver todos."
+              : "Aún no hay eventos de clientes."
+        }
       >
         {rows.map((row) => (
-          <tr key={row.id} className="hover:bg-paper">
+          <tr key={row.id} className="relative">
             <td className="px-3 py-2.5">
-              <Link href={`/eventos/${row.id}`} className="font-medium hover:underline">
-                {row.name}
-              </Link>
-              {row.is_staff_owner && (
-                <span className="ml-2">
-                  <Badge tone="info">Staff</Badge>
-                </span>
-              )}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Link href={`/eventos/${row.id}`} className="font-medium text-ink-950 after:absolute after:inset-0 hover:text-gold-800 hover:underline">
+                  {row.name}
+                </Link>
+                {row.is_staff_owner && <Badge>Staff</Badge>}
+              </div>
             </td>
-            <td className="px-3 py-2.5">
+            {/* Persona: nombre arriba y correo abajo, en una celda; sin cortes a media palabra. */}
+            <td className="max-w-60 px-3 py-2.5">
               {row.owner_id ? (
-                <Link href={`/clientes/${row.owner_id}`} className="hover:underline">
-                  {row.owner_name ?? row.owner_email ?? "—"}
+                <Link href={`/clientes/${row.owner_id}`} className="relative z-10 block min-w-0 hover:underline">
+                  <span className="block truncate text-sm text-ink-950" title={row.owner_name ?? row.owner_email ?? undefined}>
+                    {row.owner_name ?? row.owner_email ?? <Nil />}
+                  </span>
+                  {row.owner_name && row.owner_email && (
+                    <span className="block truncate text-xs text-ink-600" title={row.owner_email}>
+                      {row.owner_email}
+                    </span>
+                  )}
                 </Link>
               ) : (
-                "—"
+                <span className="text-ink-600">{NO_OWNER}</span>
               )}
             </td>
-            <td className="px-3 py-2.5 whitespace-nowrap">{formatDay(row.event_date)}</td>
-            <td className="px-3 py-2.5 text-ink-800">{row.event_type}</td>
-            <td className="px-3 py-2.5">{row.plan_key ? planName.get(row.plan_key) ?? row.plan_key : "—"}</td>
-            <td className="px-3 py-2.5 text-right tabular-nums">{row.guests}</td>
-            <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap">
-              <span className="text-ok-700">{row.rsvp_confirmed} sí</span> · {row.rsvp_pending} pend. ·{" "}
-              <span className="text-danger-700">{row.rsvp_declined} no</span>
-            </td>
+            <td className="px-3 py-2.5 whitespace-nowrap tabular-nums">{formatDay(row.event_date)}</td>
+            <td className="px-3 py-2.5 text-ink-800">{EVENT_TYPE[row.event_type] ?? row.event_type}</td>
+            <td className="px-3 py-2.5">{row.plan_key ? planName.get(row.plan_key) ?? row.plan_key : "Sin plan"}</td>
             <td className="px-3 py-2.5">
               <EventStatusBadge status={row.status} />
+            </td>
+            <td className={cn("px-3 py-2.5 text-right tabular-nums", zeroClass(row.guests))}>{row.guests}</td>
+            <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap">
+              {/* Un conteo en cero va atenuado; el color solo confirma algo real (R21). */}
+              <span className={zeroClass(row.rsvp_confirmed, "text-ok-700")}>{row.rsvp_confirmed} sí</span> ·{" "}
+              <span className={zeroClass(row.rsvp_pending)}>{row.rsvp_pending} pend.</span> ·{" "}
+              <span className={zeroClass(row.rsvp_declined, "text-danger-700")}>{row.rsvp_declined} no</span>
             </td>
           </tr>
         ))}
       </Table>
-      <Pagination page={page} pageSize={PAGE_SIZE} total={rows[0]?.total_count ?? 0} params={params} basePath="/eventos" />
+      <HowCalculated>
+        <p>
+          El estado se calcula en este orden: Archivado, Finalizado, Próximo (dentro de los días de Configuración), Activo (invitación publicada),
+          Configurando y Borrador.
+        </p>
+      </HowCalculated>
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} params={params} basePath="/eventos" hideTotal />
     </>
   );
 }

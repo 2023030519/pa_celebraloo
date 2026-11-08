@@ -1,41 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { deleteExpense } from "@/app/(admin)/gastos/actions";
+import { ConfirmAction } from "@/components/confirm-action";
 
-export function DeleteExpenseButton({ id }: { id: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  if (!confirming) {
-    return (
-      <button type="button" onClick={() => setConfirming(true)} className="text-xs font-semibold text-ink-800 hover:text-danger-700">
-        Borrar
-      </button>
-    );
-  }
+/** Borrar cambia Finanzas: pide motivo, que queda en Actividad. redirectTo: adónde ir tras borrar (la ficha ya no existe). */
+export function DeleteExpenseButton({ id, redirectTo }: { id: string; redirectTo?: string }) {
+  const router = useRouter();
   return (
-    <span className="flex flex-col gap-1">
-      <span className="flex gap-2 text-xs font-semibold">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const result = await deleteExpense(id);
-              if (!result.ok) setError(result.message);
-            })
-          }
-          className="text-danger-700"
-        >
-          {pending ? "Borrando…" : "Confirmar"}
-        </button>
-        <button type="button" onClick={() => setConfirming(false)}>
-          Cancelar
-        </button>
-      </span>
-      {error && <span className="text-xs text-danger-700">{error}</span>}
-    </span>
+    <ConfirmAction
+      label="Borrar"
+      confirmLabel="Borrar gasto"
+      tone="danger"
+      size="sm"
+      description="El gasto se borra de Finanzas y Reportes. Antes y después quedan en Actividad."
+      onConfirm={async (reason) => {
+        const result = await deleteExpense(id, reason);
+        if (result.ok && redirectTo) router.replace(redirectTo);
+        return result;
+      }}
+    />
   );
 }

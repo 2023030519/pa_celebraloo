@@ -1,6 +1,11 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { readStripePromotionCode, setStripePromotionCodeActive, stripeErrorMessage } from "@/lib/stripe/promotions";
+import {
+  listActivePanelPromotionCodes,
+  readStripePromotionCode,
+  setStripePromotionCodeActive,
+  stripeErrorMessage,
+} from "@/lib/stripe/promotions";
 
 type Row = {
   id: string;
@@ -17,6 +22,7 @@ type Row = {
  * llega su fecha de inicio (Stripe no tiene "inicio"). Stripe ya deja de
  * aceptar un código vencido o agotado por su cuenta.
  * minAgeMs: no vuelve a consultar códigos sincronizados hace menos de eso.
+ * supabase: cliente service role (admin_sync_promotion no acepta sesiones de usuario).
  */
 export async function syncPromotionsFromStripe(supabase: SupabaseClient, minAgeMs = 0): Promise<{ synced: number; errors: string[] }> {
   const { data, error } = await supabase
@@ -55,4 +61,34 @@ export async function syncPromotionsFromStripe(supabase: SupabaseClient, minAgeM
     }
   }
   return { synced, errors };
+}
+
+/**
+ * Apaga los códigos activos que el panel creó en Stripe y que no tienen fila
+ * en admin_promotions: el alta crea primero en Stripe y, si el proceso muere
+ * antes de guardar, el código quedaría usable sin registro. Su cupón se queda
+ * (sin código activo no sirve). Solo lo corre el cron: lista todo Stripe.
+ */
+export async function deactivateOrphanPromotionCodes(supabase: SupabaseClient): Promise<{ deactivated: string[]; errors: string[] }> {
+  const { data, error } = await supabase.from("admin_promotions").select("stripe_promotion_code_id").not("stripe_promotion_code_id", "is", null);
+  if (error) return { deactivated: [], errors: [error.message] };
+  const known = new Set((data ?? []).map((row) => row.stripe_promotion_code_id as string));
+
+  const deactivated: string[] = [];
+  const errors: string[] = [];
+  try {
+    // 15 min de margen: un alta en curso ya creó su código y aún no guarda la fila.
+    for (const code of await listActivePanelPromotionCodes(new Date(Date.now() - 15 * 60_000))) {
+      if (known.has(code.id)) continue;
+      try {
+        await setStripePromotionCodeActive(code.id, false);
+        deactivated.push(code.code);
+      } catch (stripeError) {
+        errors.push(`${code.code}: ${stripeErrorMessage(stripeError)}`);
+      }
+    }
+  } catch (listError) {
+    errors.push(stripeErrorMessage(listError));
+  }
+  return { deactivated, errors };
 }

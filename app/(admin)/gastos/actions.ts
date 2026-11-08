@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { requirePermission } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import { EXPENSE_CATEGORIES, parsePesosToCents, todayMx } from "@/lib/format";
+import { EXPENSE_CATEGORIES, addDays, expenseDateRange, formatDay, parsePesosToCents, todayMx } from "@/lib/format";
 
 export type ExpenseInput = {
   expenseDate: string;
@@ -30,14 +30,20 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 function toRow(input: ExpenseInput): { row: Record<string, unknown> } | { error: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) return { error: "Elige la fecha del gasto." };
+  // addDays(…, 0) normaliza: "2026-02-30" se vuelve "2026-03-02" y no coincide.
+  const range = expenseDateRange();
+  if (addDays(input.expenseDate, 0) !== input.expenseDate || input.expenseDate < range.min || input.expenseDate > range.max) {
+    return { error: `Fecha no válida: debe estar entre el ${formatDay(range.min)} y el ${formatDay(range.max)}.` };
+  }
   if (!input.concept.trim()) return { error: "Escribe el concepto." };
   if (!(input.category in EXPENSE_CATEGORIES)) return { error: "Elige una categoría." };
   if (input.expenseType !== "fijo" && input.expenseType !== "variable") return { error: "Elige fijo o variable." };
   if (!["unico", "mensual", "anual"].includes(input.periodicity)) return { error: "Elige la periodicidad." };
   const subtotal = parsePesosToCents(input.subtotal);
-  if (subtotal === null) return { error: "Subtotal no válido. Usa pesos, p. ej. 1500 o 1500.50." };
+  if (subtotal === null) return { error: "Subtotal no válido. Usa pesos y punto para los centavos, p. ej. 1500 o 1500.50." };
+  if (subtotal === 0) return { error: "El subtotal debe ser mayor que 0." };
   const tax = input.tax.trim() === "" ? 0 : parsePesosToCents(input.tax);
-  if (tax === null) return { error: "IVA no válido. Usa pesos, p. ej. 240 o déjalo vacío." };
+  if (tax === null) return { error: "IVA no válido. Usa pesos y punto para los centavos (p. ej. 240.50) o déjalo vacío." };
 
   return {
     row: {
@@ -70,12 +76,20 @@ export async function saveExpense(id: string | null, input: ExpenseInput): Promi
   redirect(`/gastos?mes=${input.expenseDate.slice(0, 7)}`);
 }
 
-export async function deleteExpense(id: string): Promise<ActionResult> {
+/** Va por RPC para que el motivo quede en la bitácora (migración 20261107303000). */
+export async function deleteExpense(id: string, reason: string): Promise<ActionResult> {
   await requirePermission("gastos.write");
   if (!UUID.test(id)) return { ok: false, message: "Gasto no válido." };
+  if (reason.trim().length < 3) return { ok: false, message: "Escribe un motivo (mínimo 3 caracteres)." };
   const supabase = await createClient();
-  const { error } = await supabase.from("admin_expenses").delete().eq("id", id);
-  if (error) return { ok: false, message: error.message };
+  const { error } = await supabase.rpc("admin_delete_expense", { p_id: id, p_reason: reason.trim() });
+  if (error) {
+    if (error.code === "P0002") return { ok: false, message: "Ese gasto ya no existe. Recarga la página." };
+    if (error.code === "PGRST202" || /could not find the function/i.test(error.message)) {
+      return { ok: false, message: "Falta aplicar la migración 20261107303000_motivo_gastos_y_configuracion.sql en Supabase." };
+    }
+    return { ok: false, message: recurringError(error) };
+  }
   refresh();
   return { ok: true, message: "Gasto borrado." };
 }
@@ -107,9 +121,9 @@ function toRecurringData(input: RecurringInput): { data: Record<string, unknown>
   if (!ISO_DAY.test(input.nextChargeDate)) return { error: "Elige la próxima fecha de cobro." };
   if (input.nextChargeDate < input.startDate) return { error: "La próxima fecha de cobro no puede ser antes del inicio." };
   const subtotal = parsePesosToCents(input.subtotal);
-  if (subtotal === null) return { error: "Subtotal no válido. Usa pesos, p. ej. 1500 o 1500.50." };
+  if (subtotal === null) return { error: "Subtotal no válido. Usa pesos y punto para los centavos, p. ej. 1500 o 1500.50." };
   const tax = input.tax.trim() === "" ? 0 : parsePesosToCents(input.tax);
-  if (tax === null) return { error: "IVA no válido. Usa pesos, p. ej. 240 o déjalo vacío." };
+  if (tax === null) return { error: "IVA no válido. Usa pesos y punto para los centavos (p. ej. 240.50) o déjalo vacío." };
   return {
     data: {
       concept: input.concept.trim().slice(0, 300),
@@ -137,8 +151,9 @@ function recurringError(error: { code?: string; message: string }): string {
 
 /**
  * Alta o edición de una suscripción. Va por RPC: la BD valida el permiso,
- * guarda el motivo en la bitácora y, si la próxima fecha ya pasó, registra
- * ese cobro como gasto de inmediato.
+ * guarda el motivo en la bitácora y registra el cobro si cae hoy. Una fecha
+ * pasada no rellena hacia atrás: la BD la adelanta al primer cobro desde hoy
+ * (migración 20261107220000_recurring_expense_no_backfill.sql).
  */
 export async function saveRecurringExpense(id: string | null, input: RecurringInput, reason: string): Promise<ActionResult> {
   await requirePermission("gastos.write");

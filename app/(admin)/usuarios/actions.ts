@@ -18,14 +18,16 @@ function missingMigration(error: { code?: string; message: string }): boolean {
 
 async function targetInfo(userId: string) {
   const service = createServiceRoleClient();
-  const [{ data: auth }, { data: staff, error: staffError }] = await Promise.all([
+  const [{ data: auth }, { data: staff, error: staffError }, { data: profile }] = await Promise.all([
     service.auth.admin.getUserById(userId),
     service.from("celebraloo_staff").select("is_platform_admin, admin_role").eq("profile_id", userId).maybeSingle(),
+    service.from("profiles").select("first_name, last_name").eq("id", userId).maybeSingle(),
   ]);
   // Cualquier rol de panel cuenta como staff con acceso (admin_role); antes
   // de la migración de roles, is_platform_admin.
   const hasPanelRole = Boolean(staff?.admin_role) || staff?.is_platform_admin === true;
-  return { email: auth?.user?.email ?? "", hasPanelRole, staffError };
+  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ");
+  return { email: auth?.user?.email ?? "", name, hasPanelRole, staffError };
 }
 
 /** Suspender o reactivar con motivo: misma acción que la ficha del cliente. */
@@ -111,6 +113,7 @@ export async function deleteAccount(userId: string, confirmEmail: string, reason
   if (ownedError) return { ok: false, message: ownedError.message };
   const orgIds = (owned ?? []).map((row) => row.organization_id as string);
 
+  let soloOrgs: string[] = [];
   if (orgIds.length > 0) {
     const [{ count: eventCount, error: eventsError }, { data: coOwners, error: coOwnersError }] = await Promise.all([
       service.from("events").select("id", { count: "exact", head: true }).in("organization_id", orgIds),
@@ -127,13 +130,12 @@ export async function deleteAccount(userId: string, confirmEmail: string, reason
     }
     // Organizaciones vacías que solo eran suyas: se van con la cuenta.
     const shared = new Set((coOwners ?? []).map((row) => row.organization_id as string));
-    const soloOrgs = orgIds.filter((id) => !shared.has(id));
-    if (soloOrgs.length > 0) {
-      const { error } = await service.from("organizations").delete().in("id", soloOrgs);
-      if (error) return { ok: false, message: error.message };
-    }
+    soloOrgs = orgIds.filter((id) => !shared.has(id));
   }
 
+  // La cuenta va primero: si Auth la rechaza, no se borró nada. Con ella se van
+  // sus membresías (cascade) y el marcador de onboarding del perfil, que con
+  // FK restrict impedía borrar antes su organización.
   const { error } = await service.auth.admin.deleteUser(userId);
   if (error) {
     return {
@@ -142,13 +144,20 @@ export async function deleteAccount(userId: string, confirmEmail: string, reason
     };
   }
 
+  const { error: orgsError } =
+    soloOrgs.length > 0 ? await service.from("organizations").delete().in("id", soloOrgs) : { error: null };
+  // La cuenta ya no existe: la bitácora toma correo y nombre del detalle.
   const supabase = await createClient();
   const { error: logError } = await supabase.rpc("admin_record_account_action", {
     p_user_id: userId,
     p_action: "account.delete",
     p_reason: reason.trim(),
-    p_detail: { email: target.email },
+    p_detail: { email: target.email, name: target.name || null },
   });
-  if (logError) console.error("[admin-audit] account.delete", logError.message);
+  const problems = [
+    orgsError && `no se borraron sus organizaciones vacías (${orgsError.message})`,
+    logError && `no quedó en Actividad (${logError.message})`,
+  ].filter(Boolean);
+  if (problems.length > 0) return { ok: false, message: `Cuenta borrada, pero ${problems.join(" y ")}.` };
   redirect("/usuarios");
 }
